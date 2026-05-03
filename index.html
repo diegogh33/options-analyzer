@@ -272,12 +272,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 
 .cmp-result{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px;margin-top:12px;}
 .cmp-result-t{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:11px;padding-bottom:8px;border-bottom:1px solid var(--border);}
-.winner-box{background:var(--bg3);border:1px solid rgba(61,220,132,.25);border-radius:8px;padding:11px 12px;margin-bottom:10px;}
-.winner-lbl{font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:.08em;font-weight:600;margin-bottom:5px;}
-.winner-txt{font-size:11px;color:#a0a0c0;line-height:1.7;}
+.winner-box{border-radius:10px;padding:14px 16px;margin-bottom:12px;border:2px solid;}
+.winner-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;font-weight:700;margin-bottom:8px;text-transform:uppercase;}
+.winner-txt{line-height:1.5;}
 .winner-txt b{color:var(--text);}
-.cmp-text{font-size:11px;color:#a0a0c0;line-height:1.7;}
-.cmp-text b{color:var(--text);}
+.cmp-text{font-size:13px;color:var(--text);line-height:1.8;}
+.cmp-text b{color:#fff;font-weight:600;}
 .empty-state{text-align:center;padding:40px 20px;}
 .empty-icon{font-size:34px;margin-bottom:12px;}
 .empty-t{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;}
@@ -553,24 +553,18 @@ function sugItem(icon, html) {
   return '<div class="sug"><span class="sug-icon">'+icon+'</span><span class="sug-txt">'+html+'</span></div>';
 }
 function renderMd(t) {
-  // Clean up #### headings (convert to bold paragraphs)
-  t = t.replace(/^#### (.+)$/gm, '<p><strong>$1</strong></p>');
+  if (!t) return '';
+  t = t.replace(/^#### (.+)$/gm, '<p><strong style="color:var(--text);font-size:14px;">$1</strong></p>');
   t = t.replace(/^### (.+)$/gm, '<h3>$1</h3>');
   t = t.replace(/^## (.+)$/gm,  '<h2>$1</h2>');
   t = t.replace(/^# (.+)$/gm,   '<h1>$1</h1>');
-  // Bold and italic
   t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   t = t.replace(/\*(.+?)\*/g,       '<em>$1</em>');
-  // Lists
-  t = t.replace(/^- (.+)$/gm,  '<li>$1</li>');
-  t = t.replace(/^\d+\. (.+)$/gm,'<li>$1</li>');
-  // Wrap consecutive <li> in <ul>
-  t = t.replace(/(<li>.*?<\/li>)(\s*<li>)/g, '$1$2');
-  // Horizontal rules
+  t = t.replace(/^- (.+)$/gm,   '<li>$1</li>');
+  t = t.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
   t = t.replace(/^---+$/gm, '<hr>');
-  // Paragraphs
   t = t.replace(/\n\n/g, '</p><p>');
-  t = t.replace(/\n/g,    '<br>');
+  t = t.replace(/\n/g, '<br>');
   return '<p>'+t+'</p>';
 }
 
@@ -1137,8 +1131,12 @@ function renderHistory() {
       if(d.delta)  html+='<span class="pparam">\u0394 '+parseFloat(d.delta).toFixed(3)+'</span>';
       html+='</div>';
       html+='<div class="ac-bot">';
-      html+='<span class="ac-score" style="color:'+scoreColor+';">'+(d.puntuacion||'\u2014')+'/100</span>';
-      html+='<span class="ac-verdict '+vclass+'">'+d.veredicto+'</span>';
+      if(d.puntuacion && d.veredicto && d.veredicto !== 'undefined'){
+        html+='<span class="ac-score" style="color:'+scoreColor+';">'+(d.puntuacion||'\u2014')+'/100</span>';
+        html+='<span class="ac-verdict '+vclass+'">'+d.veredicto+'</span>';
+      } else if(d.tipoOperacion==='Comparacion'){
+        html+='<span class="ac-verdict" style="background:rgba(124,111,255,.15);color:var(--accent);">Comparaci\u00F3n</span>';
+      }
       if(d.tieneInforme) html+='<span class="rep-badge">\uD83D\uDCC4 Informe</span>';
       html+='</div>';
 
@@ -1272,8 +1270,15 @@ async function doCompare() {
   output.innerHTML='<div class="loading-state"><div class="spinner vis" style="margin:0 auto 10px;"></div><div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Claude est\u00E1 comparando los an\u00E1lisis...</div></div>';
 
   var desc=compareList.map(function(d,i){
-    return (i+1)+'. '+d.ticker+' \u00B7 '+d.tipoOperacion+' Strike $'+d.strike+' \u00B7 '+d.dte+' DTE \u00B7 Prima $'+d.prima+' \u00B7 Score '+d.puntuacion+'/100 \u00B7 '+d.veredicto+(d.tesis?' \u00B7 Tesis: '+d.tesis:'');
-  }).join('\n');
+    var lines=[];
+    lines.push((i+1)+'. '+d.ticker+' - '+d.tipoOperacion+' Strike $'+d.strike+' - '+d.dte+' DTE - Prima $'+parseFloat(d.prima||0).toFixed(2));
+    lines.push('   Score: '+(d.puntuacion||'N/A')+'/100 | Veredicto: '+(d.veredicto||'N/A'));
+    lines.push('   IV: '+(d.iv||'N/A')+'% | Delta: '+(d.delta||'N/A'));
+    if(d.arorc) lines.push('   ARORC: '+d.arorc+'%');
+    if(d.tesis&&d.tesis!=='Sin tesis especificada') lines.push('   Tesis: '+d.tesis);
+    else lines.push('   Tesis: No especificada (el usuario no rellen&#243; este campo)');
+    return lines.join('\n');
+  }).join('\n\n');
 
   try {
     var resp=await fetch('https://options-proxy.dvich33.workers.dev',{
@@ -1292,10 +1297,31 @@ async function doCompare() {
     var txt='';
     if(data.content) data.content.forEach(function(b){if(b.type==='text') txt+=b.text;});
 
-    var winnerMatch=txt.match(/GANADOR[^:]*:\s*([^\n]+)/i);
-    var winnerTxt=winnerMatch?winnerMatch[1].trim():'Ver an\u00E1lisis completo';
+    // Parse the response into sections
+    var lines = txt.split('\n').filter(function(l){return l.trim();});
+    var winnerLine = '';
+    var bodyLines = [];
+    var foundWinner = false;
+    for(var li=0;li<lines.length;li++){
+      var line = lines[li].trim();
+      if(!foundWinner && (line.match(/^(GANADOR|NINGUNO|EJECUTAR|ESPERAR|DESCARTAR|MI ELECCI)/i) || line.match(/^\d+\.\s*(GANADOR|NINGUNO)/i))){
+        winnerLine = line.replace(/^[#*\d\.]+\s*/,'').replace(/\*\*/g,'');
+        foundWinner = true;
+      } else {
+        bodyLines.push(line);
+      }
+    }
+    if(!winnerLine) winnerLine = lines[0]||'Ver an\u00E1lisis';
 
-    output.innerHTML='<div class="winner-box"><div class="winner-lbl">RECOMENDACI\u00D3N DE CLAUDE</div><div class="winner-txt"><b>'+winnerTxt+'</b></div></div><div class="cmp-text">'+renderMd(txt)+'</div>';
+    var winnerColor = winnerLine.match(/NINGUNO|EVITAR|NO EJECUTO/i) ? 'var(--red)' :
+                      winnerLine.match(/ESPERAR|REVISAR/i) ? 'var(--amber)' : 'var(--green)';
+
+    output.innerHTML =
+      '<div class="winner-box" style="border-color:'+winnerColor+';background:rgba(0,0,0,0.2);">'
+      +'<div class="winner-lbl" style="color:'+winnerColor+';">RECOMENDACI\u00D3N DE CLAUDE</div>'
+      +'<div class="winner-txt" style="font-size:15px;font-weight:700;color:'+winnerColor+';line-height:1.4;">'+winnerLine+'</div>'
+      +'</div>'
+      +'<div class="cmp-text" style="margin-top:12px;">'+renderMd(bodyLines.join('\n'))+'</div>';
     btn.disabled=false;
 
     // Guardar comparaci?n en Notion

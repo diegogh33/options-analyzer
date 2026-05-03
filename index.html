@@ -1150,9 +1150,8 @@ function saveReportToNotion(d, fullText, mode, realPrice, todayISO) {
 async function loadHistory() {
   var hc=g('hist-content');
   hc.innerHTML='<div class="loading-state"><div class="spinner vis" style="margin:0 auto 12px;"></div><div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Cargando...</div></div>';
-  var cutoff=new Date(); cutoff.setDate(cutoff.getDate()-90);
   var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
-  historyData=all.filter(function(e){ return e.fecha && new Date(e.fecha)>=cutoff; });
+  historyData=all.slice(); // all entries, no time limit
   renderHistory();
 }
 
@@ -1225,7 +1224,14 @@ function renderHistory() {
       window['_hd_'+safeIdx]=d;
 
       html+='<div class="'+cardClass+'" id="card-'+safeIdx+'" onclick="onCardClick(\''+safeIdx+'\')">';
-      html+='<div class="ac-top"><span class="ac-strat" style="'+stratColor+'">'+d.tipoOperacion+'</span><span class="ac-date">'+fechaStr+'</span></div>';
+      html+='<div class="ac-top">';
+      html+='<span class="ac-strat" style="'+stratColor+'">'+d.tipoOperacion+'</span>';
+      html+='<div style="display:flex;align-items:center;gap:8px;">';
+      html+='<span class="ac-date">'+fechaStr+'</span>';
+      window['_del_'+safeIdx]=d.id;
+      html+='<button onclick="deleteAnalysis(window[\'_del_'+safeIdx+'\'],event)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;" title="Eliminar">&#10005;</button>';
+      html+='</div>';
+      html+='</div>';
       html+='<div class="ac-params">';
       if(d.strike) html+='<span class="pparam">Strike $'+d.strike+'</span>';
       if(d.dte)    html+='<span class="pparam">'+d.dte+' DTE</span>';
@@ -1574,6 +1580,15 @@ async function syncToNotion() {
     ?'\u26A0 '+ok+' guardados, '+fail+' con error'
     :'\u2713 '+ok+' elemento'+(ok>1?'s':'')+' guardados en Notion';
   btn.disabled=false;
+}
+
+function deleteAnalysis(entryId, event) {
+  event.stopPropagation();
+  var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
+  all=all.filter(function(e){return e.id!==entryId;});
+  localStorage.setItem('opt_hist',JSON.stringify(all));
+  historyData=historyData.filter(function(e){return e.id!==entryId;});
+  renderHistory();
 }
 
 function markSynced(ids, nsave, btn) {

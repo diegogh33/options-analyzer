@@ -958,7 +958,7 @@ async function deepDive(mode) {
   try {
     var resp=await fetch('https://options-proxy.dvich33.workers.dev',{method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5-20250929',max_tokens:5000,stream:true,
+      body:JSON.stringify({model:'claude-sonnet-4-5-20250929',max_tokens:7000,stream:true,
         messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){

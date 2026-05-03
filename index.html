@@ -800,7 +800,7 @@ async function deepDive(mode) {
   try {
     var sr=await fetch('https://options-proxy.dvich33.workers.dev',{method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:300,
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:'Exact current stock price of '+d.ticker+' today '+todayISO+'. Reply ONLY JSON: {"price":123.45,"source":"Yahoo Finance","date":"'+todayISO+'"} No other text.'}]
       })
@@ -824,7 +824,7 @@ async function deepDive(mode) {
   try {
     var er=await fetch('https://options-proxy.dvich33.workers.dev',{method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:400,
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:'Last and next earnings report dates for '+d.ticker+'. Today is '+todayISO+'. Reply ONLY JSON: {"last_earnings":"2025-02-14","last_eps_actual":1.23,"last_eps_estimate":1.10,"last_surprise_pct":11.8,"next_earnings":"2025-05-14","next_confirmed":true} Use null for unknowns. No other text.'}]
       })
@@ -887,7 +887,7 @@ async function deepDive(mode) {
   try {
     var resp=await fetch('https://options-proxy.dvich33.workers.dev',{method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:8000,stream:true,
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,stream:true,
         messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){
@@ -969,7 +969,7 @@ async function loadHistory() {
     var resp=await fetch('https://options-proxy.dvich33.workers.dev',{
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:3000,
+        model:'claude-sonnet-4-5', max_tokens:3000,
         mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}],
         messages:[{role:'user',content:
           'Search Notion data source "collection://'+NOTION_DS_ANALYSIS+'" for all entries with Fecha after '+cutoffISO+'. Return ONLY a JSON array with objects having these fields: id,ticker,fecha,tipoOperacion,spot,strike,dte,prima,delta,iv,contratos,puntuacion,veredicto,arorc,tesis,tieneInforme,informeUrl. Sort by fecha descending. Return [] if none. No markdown.'
@@ -1120,7 +1120,7 @@ async function loadReport(entryId, title, event) {
       var resp=await fetch('https://options-proxy.dvich33.workers.dev',{
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          model:'claude-sonnet-4-20250514', max_tokens:4000,
+          model:'claude-sonnet-4-5', max_tokens:4000,
           mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}],
           messages:[{role:'user',content:'Fetch Notion page: "'+entry.informeUrl+'". Return ONLY the page content as plain markdown text, no explanation.'}]
         })
@@ -1203,7 +1203,7 @@ async function doCompare() {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-sonnet-4-5',
         max_tokens:2000,
         messages:[{role:'user',content:
           'Eres un Senior Investment Partner. Compara estos '+compareList.length+' an\u00E1lisis de opciones y decide cu\u00E1l ejecutar\u00EDas y por qu\u00E9. Si ninguno es recomendable, dilo claramente.\n\n'+desc+'\n\n'+
@@ -1310,7 +1310,7 @@ async function syncToNotion() {
       var resp=await fetch('https://options-proxy.dvich33.workers.dev',{
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          model:'claude-sonnet-4-20250514', max_tokens:300,
+          model:'claude-sonnet-4-5', max_tokens:300,
           mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}],
           messages:[{role:'user',content:msgContent}]
         })

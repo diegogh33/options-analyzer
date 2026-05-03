@@ -520,6 +520,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 // -
 // CONFIG ? IDs de las bases de datos en Notion
 // -
+var FINNHUB_KEY = 'd7rhlhpr01qgahvdlstgd7rhlhpr01qgahvdlsu0';
 var NOTION_DS_ANALYSIS  = '10c7551b-0efa-469a-b55d-4e160973008c';
 var NOTION_DS_REPORTS   = 'a186414e-e542-41f2-867a-dc8d96af52fa';
 var NOTION_API          = 'https://options-proxy.dvich33.workers.dev/notion';
@@ -854,23 +855,10 @@ async function deepDive(mode) {
   var todayISO=now.toISOString().slice(0,10);
   var todayHuman=now.toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'});
 
-  // STEP 1: Real price
-  status.textContent='Verificando precio de '+d.ticker+'...';
-  var realPrice=null, priceLine='';
-  try {
-    var sr=await fetch('https://options-proxy.dvich33.workers.dev',{method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:150,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:'Exact current stock price of '+d.ticker+' today '+todayISO+'. Reply ONLY JSON: {"price":123.45,"source":"Yahoo Finance","date":"'+todayISO+'"} No other text.'}]
-      })
-    });
-    var sd=await sr.json(); var st='';
-    if(sd.content) sd.content.forEach(function(b){if(b.type==='text') st+=b.text;});
-    var jm=st.match(/\{[^}]+\}/);
-    if(jm){var p=JSON.parse(jm[0]);if(p.price&&!isNaN(p.price)) realPrice=parseFloat(p.price);}
-  } catch(e){}
-  var usePrice=realPrice||d.spot;
+  // Price: use exactly what user entered - they see it in real time in IBKR
+  var realPrice = null;
+  var usePrice = d.spot;
+  var priceLine = 'Precio de referencia: $'+d.spot+' (introducido por el usuario desde IBKR)';
   if(realPrice){
     var diff=Math.abs(realPrice-d.spot)/d.spot*100;
     priceLine='PRECIO VERIFICADO HOY ('+todayISO+'): $'+realPrice+(diff>5?' \u26A0 DIFERENCIA CON PRECIO INTRODUCIDO ($'+d.spot+'): '+diff.toFixed(1)+'% - USA $'+realPrice+' COMO REFERENCIA':' (consistente con $'+d.spot+' introducido)');
@@ -878,45 +866,63 @@ async function deepDive(mode) {
     priceLine='Precio introducido: $'+d.spot+' (verificaci\u00F3n no disponible)';
   }
 
-  // STEP 2: Earnings dates
+  // STEP 2: Earnings via Finnhub (free, direct, no Claude tokens)
   status.textContent='Buscando earnings de '+d.ticker+'...';
   var earningsLine='Earnings: informaci\u00F3n no disponible.';
   try {
-    var er=await fetch('https://options-proxy.dvich33.workers.dev',{method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:200,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:'Last and next earnings report dates for '+d.ticker+'. Today is '+todayISO+'. Reply ONLY JSON: {"last_earnings":"2025-02-14","last_eps_actual":1.23,"last_eps_estimate":1.10,"last_surprise_pct":11.8,"next_earnings":"2025-05-14","next_confirmed":true} Use null for unknowns. No other text.'}]
-      })
-    });
-    var ed=await er.json(); var et='';
-    if(ed.content) ed.content.forEach(function(b){if(b.type==='text') et+=b.text;});
-    var em=et.match(/\{[^{}]+\}/);
-    if(em){
-      var ep=JSON.parse(em[0]);
-      var lastDate=ep.last_earnings||'desconocido';
-      var nextDate=ep.next_earnings||'desconocido';
-      var confirmed=ep.next_confirmed?'confirmado':'estimado';
-      var surprise=(ep.last_surprise_pct!=null)?' (sorpresa: '+(ep.last_surprise_pct>0?'+':'')+parseFloat(ep.last_surprise_pct).toFixed(1)+'%)':'';
-      var daysLeft=9999;
-      if(ep.next_earnings){
-        daysLeft=Math.round((new Date(ep.next_earnings)-new Date(todayISO))/86400000);
+    var today=new Date();
+    var todayStr=today.toISOString().slice(0,10);
+    // Get last 2 earnings and next 2 from Finnhub
+    var fromDate=new Date(today); fromDate.setFullYear(fromDate.getFullYear()-1);
+    var toDate=new Date(today); toDate.setFullYear(toDate.getFullYear()+1);
+    var fromStr=fromDate.toISOString().slice(0,10);
+    var toStr=toDate.toISOString().slice(0,10);
+
+    var finnResp=await fetch(
+      'https://finnhub.io/api/v1/calendar/earnings?symbol='+d.ticker+'&from='+fromStr+'&to='+toStr+'&token='+FINNHUB_KEY
+    );
+    var finnData=await finnResp.json();
+    var earnings=(finnData.earningsCalendar||[]).sort(function(a,b){return a.date<b.date?-1:1;});
+
+    // Split past and future
+    var past=earnings.filter(function(e){return e.date<=todayStr;});
+    var future=earnings.filter(function(e){return e.date>todayStr;});
+
+    var lastE=past.length?past[past.length-1]:null;
+    var nextE=future.length?future[0]:null;
+
+    var lastStr='', nextStr='', inWindow=false;
+    if(lastE){
+      var surprise='';
+      if(lastE.epsActual!=null&&lastE.epsEstimate!=null&&lastE.epsEstimate!==0){
+        var surpPct=((lastE.epsActual-lastE.epsEstimate)/Math.abs(lastE.epsEstimate)*100).toFixed(1);
+        surprise=' (sorpresa: '+(surpPct>0?'+':'')+surpPct+'%)';
       }
-      var inWindow=(daysLeft>0&&daysLeft<=d.dte);
-      var warningTag=inWindow?' [DENTRO DEL VENCIMIENTO - IMPACTO ALTO]':'';
-      earningsLine='Ultimos earnings: '+lastDate+surprise+' | EPS real: '+(ep.last_eps_actual||'N/A')+' vs estimado: '+(ep.last_eps_estimate||'N/A')
-        +'\nProximos earnings: '+nextDate+' ('+confirmed+') - '+daysLeft+' dias desde hoy'+warningTag;
-      if(inWindow) earningsLine='\u26A0 EARNINGS DENTRO DEL VENCIMIENTO: los proximos earnings ('+nextDate+', '+confirmed+') caen en '+daysLeft+' dias, DENTRO de los '+d.dte+' DTE. Impacto directo en IV y precio de la opcion.\n'+earningsLine;
+      lastStr='\u00DAltimos earnings: '+lastE.date+surprise
+        +(lastE.epsActual!=null?' | EPS real: $'+lastE.epsActual:'')
+        +(lastE.epsEstimate!=null?' vs estimado: $'+lastE.epsEstimate:'');
     }
-  } catch(e){ earningsLine='Earnings: busqueda no disponible.'; }
+    if(nextE){
+      var daysLeft=Math.round((new Date(nextE.date)-today)/86400000);
+      inWindow=(daysLeft>0&&daysLeft<=d.dte);
+      var confirmedStr=nextE.hour?(' ('+nextE.hour+')'):'';
+      nextStr='Pr\u00F3ximos earnings: '+nextE.date+confirmedStr+' \u2014 '+daysLeft+' d\u00EDas desde hoy';
+      if(inWindow) nextStr='\u26A0 EARNINGS DENTRO DEL VENCIMIENTO: '+nextStr+' (dentro de los '+d.dte+' DTE)';
+    }
+
+    if(lastStr||nextStr){
+      earningsLine=(lastStr?lastStr+'\n':'')+(nextStr?nextStr:'');
+    }
+  } catch(ex){
+    console.error('Finnhub error:', ex);
+    earningsLine='Earnings: no se pudo obtener informaci\u00F3n de Finnhub.';
+  }
 
   var priceHtml='<div class="price-note">'+priceLine+'</div>';
   var earningsHtml='<div class="price-note" style="color:var(--blue);background:rgba(79,195,247,.06);border-color:rgba(79,195,247,.3);">'+earningsLine.replace(/\n/g,'<br>')+'</div>';
   content.innerHTML=priceHtml+earningsHtml;
 
   var isExtended=(mode===2);
-  // Small delay to avoid rate limit from concurrent calls
-  await new Promise(function(resolve){setTimeout(resolve,2000);});
   status.textContent='Generando informe de '+d.ticker+'...';
 
   var prompt='Eres un Senior Investment Partner con 20 anos de experiencia en equity research y trading de opciones.\n'
@@ -958,7 +964,7 @@ async function deepDive(mode) {
   try {
     var resp=await fetch('https://options-proxy.dvich33.workers.dev',{method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:6000,stream:true,
+      body:JSON.stringify({model:'claude-sonnet-4-5-20250929',max_tokens:5000,stream:true,
         messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){
@@ -1040,7 +1046,7 @@ async function loadHistory() {
     var resp=await fetch('https://options-proxy.dvich33.workers.dev',{
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-5', max_tokens:3000,
+        model:'claude-haiku-4-5-20251001',max_tokens:2000,
         mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}],
         messages:[{role:'user',content:
           'Search Notion data source "collection://'+NOTION_DS_ANALYSIS+'" for all entries with Fecha after '+cutoffISO+'. Return ONLY a JSON array with objects having these fields: id,ticker,fecha,tipoOperacion,spot,strike,dte,prima,delta,iv,contratos,puntuacion,veredicto,arorc,tesis,tieneInforme,informeUrl. Sort by fecha descending. Return [] if none. No markdown.'
@@ -1191,7 +1197,7 @@ async function loadReport(entryId, title, event) {
       var resp=await fetch('https://options-proxy.dvich33.workers.dev',{
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          model:'claude-sonnet-4-5', max_tokens:4000,
+          model:'claude-haiku-4-5-20251001',max_tokens:2000,
           mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}],
           messages:[{role:'user',content:'Fetch Notion page: "'+entry.informeUrl+'". Return ONLY the page content as plain markdown text, no explanation.'}]
         })
@@ -1274,7 +1280,7 @@ async function doCompare() {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-5',
+        model:'claude-haiku-4-5-20251001',
         max_tokens:2000,
         messages:[{role:'user',content:
           'Eres un Senior Investment Partner. Compara estos '+compareList.length+' an\u00E1lisis de opciones y decide cu\u00E1l ejecutar\u00EDas y por qu\u00E9. Si ninguno es recomendable, dilo claramente.\n\n'+desc+'\n\n'+

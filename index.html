@@ -314,9 +314,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 
 /* Score ring - fix alignment */
 .score-wrap{display:flex;align-items:flex-start;gap:14px;width:100%;}
-.score-ring{position:relative;width:64px;height:64px;flex-shrink:0;}
+.score-ring{position:relative;width:64px;height:64px;flex-shrink:0;display:inline-block;}
 .score-ring svg{display:block;}
-.ring-num{position:absolute;top:0;left:0;width:64px;height:64px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:18px;font-weight:700;line-height:1;}
+
 .crits{flex:1;min-width:0;padding-top:2px;}
 .crit{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;width:100%;}
 .cl{font-size:12px;color:var(--text);flex:1;line-height:1.4;min-width:0;}
@@ -439,13 +439,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
       <div class="iblock-t">Puntuaci&oacute;n del setup &middot; criterios clave</div>
       <div class="score-wrap">
         <div class="ring">
-          <svg width="64" height="64" viewBox="0 0 64 64">
+          <svg width="64" height="64" viewBox="0 0 64 64" style="display:block;">
             <circle cx="32" cy="32" r="26" fill="none" stroke="#1a1a24" stroke-width="7"/>
             <circle id="score-arc" cx="32" cy="32" r="26" fill="none" stroke="#3ddc84" stroke-width="7"
               stroke-dasharray="163.4" stroke-dashoffset="163.4" stroke-linecap="round"
               transform="rotate(-90 32 32)"/>
+            <text id="score-num" x="32" y="32" text-anchor="middle" dominant-baseline="central"
+              font-family="IBM Plex Mono,monospace" font-size="16" font-weight="700" fill="#3ddc84">-</text>
           </svg>
-          <div class="ring-num" id="score-num">&mdash;</div>
         </div>
         <div class="crits" id="o-criteria"></div>
       </div>
@@ -747,7 +748,7 @@ function analyze() {
   var scorePct=Math.round(score/total*100);
   var scoreColor=scorePct>=70?'#3ddc84':scorePct>=45?'#ffb830':'#ff5252';
   setArc(scorePct, scoreColor);
-  g('score-num').textContent=scorePct; g('score-num').style.color=scoreColor;
+  g('score-num').textContent=scorePct; g('score-num').setAttribute('fill',scoreColor);
   g('o-criteria').innerHTML=criteriaHtml;
 
   // SUGERENCIAS

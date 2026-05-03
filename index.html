@@ -18,6 +18,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding-bottom:60px;}
+.page-wrap{max-width:720px;margin:0 auto;}
 
 /* &#9472;&#9472; HEADER &#9472;&#9472; */
 .hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 16px 0;position:sticky;top:0;z-index:100;}
@@ -248,12 +249,25 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .empty-t{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;}
 .empty-s{font-size:11px;color:#3a3a55;line-height:1.6;}
 .loading-state{text-align:center;padding:30px 20px;}
+
+/* Report readability */
+#deepContent h1{font-size:15px;color:var(--accent);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+#deepContent h2{font-size:14px;color:var(--accent);margin:18px 0 9px;padding-bottom:5px;border-bottom:1px solid var(--border);}
+#deepContent h3{font-size:13px;color:var(--blue);margin:14px 0 7px;}
+#deepContent p{margin-bottom:10px;line-height:1.85;}
+#deepContent li{margin-bottom:5px;margin-left:18px;line-height:1.7;}
+#deepContent strong{color:#fff;font-weight:600;}
+#deepContent em{color:var(--muted);}
+#deepContent hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
+/* Summary box for verdict */
+.verdict-summary{background:var(--bg3);border:1px solid var(--accent);border-radius:10px;padding:14px 16px;margin:16px 0;font-size:13px;line-height:1.8;}
+.verdict-summary .vs-label{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;}
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
-<div class="hdr">
+<div class="page-wrap"><div class="hdr" style="position:static;border-radius:12px 12px 0 0;margin-bottom:0;">
   <div class="hdr-top">
     <h1>OPTIONS ANALYZER</h1>
     <div class="notion-badge"><div class="ndot"></div>Notion sync</div>
@@ -474,6 +488,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 // -
 var NOTION_DS_ANALYSIS  = '10c7551b-0efa-469a-b55d-4e160973008c';
 var NOTION_DS_REPORTS   = 'a186414e-e542-41f2-867a-dc8d96af52fa';
+var NOTION_API          = 'https://options-proxy.dvich33.workers.dev/notion';
 
 // -
 // STATE
@@ -503,14 +518,25 @@ function sugItem(icon, html) {
   return '<div class="sug"><span class="sug-icon">'+icon+'</span><span class="sug-txt">'+html+'</span></div>';
 }
 function renderMd(t) {
-  return t
-    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
-    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/^- (.+)$/gm,'<li>$1</li>')
-    .replace(/\n\n/g,'</p><p>')
-    .replace(/\n/g,'<br>');
+  // Clean up #### headings (convert to bold paragraphs)
+  t = t.replace(/^#### (.+)$/gm, '<p><strong>$1</strong></p>');
+  t = t.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  t = t.replace(/^## (.+)$/gm,  '<h2>$1</h2>');
+  t = t.replace(/^# (.+)$/gm,   '<h1>$1</h1>');
+  // Bold and italic
+  t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/\*(.+?)\*/g,       '<em>$1</em>');
+  // Lists
+  t = t.replace(/^- (.+)$/gm,  '<li>$1</li>');
+  t = t.replace(/^\d+\. (.+)$/gm,'<li>$1</li>');
+  // Wrap consecutive <li> in <ul>
+  t = t.replace(/(<li>.*?<\/li>)(\s*<li>)/g, '$1$2');
+  // Horizontal rules
+  t = t.replace(/^---+$/gm, '<hr>');
+  // Paragraphs
+  t = t.replace(/\n\n/g, '</p><p>');
+  t = t.replace(/\n/g,    '<br>');
+  return '<p>'+t+'</p>';
 }
 
 // -
@@ -880,9 +906,18 @@ async function deepDive(mode) {
     +'## 9. EARNINGS Y CATALIZADORES TEMPORALES\n'
     +'Analiza en detalle: '+earningsLine+'\n'
     +'Caen dentro del vencimiento de la opcion ('+d.dte+' DTE)? Como afecta a la IV y al valor de la opcion? Que espera el mercado?\n'
-    +'## 10. STRESS TESTS (bajista / base / alcista)\n'
-    +'## 11. VEREDICTO FINAL - '+d.stratName.toUpperCase()+' $'+d.strike+'\n'
-    +'EJECUTAR / ESPERAR / DESCARTAR con justificacion detallada. Es adecuado el strike $'+d.strike+' a $'+usePrice+' spot? Y la prima $'+d.premium+'? Sugiere ajustes si procede.';
+    +'## 10. STRESS TESTS\n'
+    +'Presenta tres escenarios con formato claro:\n'
+    +'BAJISTA (X% prob): precio objetivo, impacto en la opcion\n'
+    +'BASE (X% prob): precio objetivo, impacto en la opcion\n'
+    +'ALCISTA (X% prob): precio objetivo, impacto en la opcion\n'
+    +'## 11. VEREDICTO FINAL\n'
+    +'Comienza con una linea en MAYUSCULAS: EJECUTAR / ESPERAR / DESCARTAR\n'
+    +'Despues 3-4 razones concretas y directas.\n'
+    +'Strike $'+d.strike+' a $'+usePrice+': es correcto o sugiere alternativa con ejemplo concreto.\n'
+    +'Prima $'+d.premium+': razonable o no.\n'
+    +'Termina con una frase de conclusion en negrita.\n'
+    +'Usa titulos, listas y estructura clara. Evita bloques de texto sin separar.';
 
   try {
     var resp=await fetch('https://options-proxy.dvich33.workers.dev',{method:'POST',
@@ -1255,77 +1290,102 @@ function saveCmpToNotion(list, text) {
 showTab('analyzer');
 
 
-// - Sync to Notion via Claude API (works on HTTPS/GitHub Pages) -
+// - Sync directly to Notion API -
 async function syncToNotion() {
   var btn=g('btn-sync-notion'), nsave=g('o-nsave');
   nsave.style.display='flex'; nsave.className='nsave saving';
-  nsave.textContent='Sincronizando con Notion...';
+  nsave.textContent='Guardando en Notion...';
   btn.disabled=true;
 
   var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
   var pending=all.filter(function(e){return !e.notionSynced;});
 
   if(!pending.length){
-    nsave.className='nsave'; nsave.textContent='\u2713 Todo ya sincronizado';
+    nsave.className='nsave';
+    nsave.textContent='\u2713 Todo ya sincronizado con Notion';
     btn.disabled=false; return;
   }
 
   var ok=0, fail=0;
   for(var i=0;i<pending.length;i++){
     var e=pending[i];
-    try{
+    try {
       var today=e.fecha||new Date().toISOString().slice(0,10);
       var isReport=e.tieneInforme&&e.reportText;
-      var dsId=isReport?NOTION_DS_REPORTS:NOTION_DS_ANALYSIS;
+      var dbId=isReport?NOTION_DS_REPORTS:NOTION_DS_ANALYSIS;
       var name=e.ticker+' - '+(e.tipoOperacion||'')+(e.strike?' $'+e.strike:'')+' - '+today;
 
-      var props='Nombre: "'+name+'"\nTicker: "'+e.ticker+'"\ndate:Fecha:start: "'+today+'"\ndate:Fecha:is_datetime: 0\n';
+      // Build properties for Notion API
+      var props={
+        'Nombre': {title:[{text:{content:name.slice(0,200)}}]},
+        'Ticker': {rich_text:[{text:{content:String(e.ticker||'')}}]},
+        'Fecha':  {date:{start:today}}
+      };
+
       if(!isReport){
-        props+='Tipo Operacion: "'+(e.tipoOperacion||'')+'\n';
-        if(e.spot)       props+='Spot: '+e.spot+'\n';
-        if(e.strike)     props+='Strike: '+e.strike+'\n';
-        if(e.dte)        props+='DTE: '+e.dte+'\n';
-        if(e.prima)      props+='Prima: '+e.prima+'\n';
-        if(e.delta)      props+='Delta: '+e.delta+'\n';
-        if(e.iv)         props+='IV: '+e.iv+'\n';
-        if(e.puntuacion) props+='Puntuacion: '+e.puntuacion+'\n';
-        if(e.veredicto)  props+='Veredicto: "'+e.veredicto+'"\n';
-        if(e.arorc)      props+='ARORC: '+e.arorc+'\n';
-        if(e.tesis)      props+='Tesis: "'+e.tesis+'"\n';
-        props+='Tiene Informe: "__NO__"\n';
+        if(e.tipoOperacion) props['Tipo Operaci\u00F3n']={select:{name:e.tipoOperacion}};
+        if(e.spot)          props['Spot']={number:parseFloat(e.spot)||0};
+        if(e.strike)        props['Strike']={number:parseFloat(e.strike)||0};
+        if(e.dte)           props['DTE']={number:parseInt(e.dte)||0};
+        if(e.prima)         props['Prima']={number:parseFloat(e.prima)||0};
+        if(e.delta)         props['Delta']={number:parseFloat(e.delta)||0};
+        if(e.iv)            props['IV']={number:parseFloat(e.iv)||0};
+        if(e.contratos)     props['Contratos']={number:parseInt(e.contratos)||1};
+        if(e.puntuacion!=null) props['Puntuaci\u00F3n']={number:parseInt(e.puntuacion)||0};
+        if(e.veredicto)     props['Veredicto']={select:{name:e.veredicto}};
+        if(e.arorc!=null)   props['ARORC']={number:parseFloat(e.arorc)||0};
+        if(e.tesis)         props['Tesis']={rich_text:[{text:{content:String(e.tesis).slice(0,2000)}}]};
+        props['Tiene Informe']={checkbox:false};
       } else {
-        props+='Tipo Informe: "Estandar (10 secciones)"\n';
-        props+='Tipo Operacion: "'+(e.tipoOperacion||'')+'\n';
-        if(e.strike)       props+='Strike: '+e.strike+'\n';
-        if(e.dte)          props+='DTE: '+e.dte+'\n';
-        if(e.verdictFinal) props+='Veredicto Final: "'+e.verdictFinal+'"\n';
-        if(e.realPrice)    props+='Precio Verificado: '+e.realPrice+'\n';
+        if(e.tipoOperacion) props['Tipo Operaci\u00F3n']={select:{name:e.tipoOperacion}};
+        props['Tipo Informe']={select:{name:'Est\u00E1ndar (10 secciones)'}};
+        if(e.strike)        props['Strike']={number:parseFloat(e.strike)||0};
+        if(e.dte)           props['DTE']={number:parseInt(e.dte)||0};
+        if(e.verdictFinal)  props['Veredicto Final']={select:{name:e.verdictFinal}};
+        if(e.realPrice)     props['Precio Verificado']={number:parseFloat(e.realPrice)||0};
       }
 
-      var msgContent='Create a page in Notion data source "collection://'+dsId+'" with these properties:\n'
-        +props
-        +(isReport&&e.reportText?'\nPage content:\n'+e.reportText.slice(0,10000):'')
-        +'\nReturn ONLY the created page URL.';
+      // Create page in Notion
+      var pageBody={parent:{database_id:dbId},properties:props};
 
-      var resp=await fetch('https://options-proxy.dvich33.workers.dev',{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          model:'claude-sonnet-4-5', max_tokens:300,
-          mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}],
-          messages:[{role:'user',content:msgContent}]
-        })
+      // Add report content as page blocks if available
+      if(isReport&&e.reportText){
+        var chunks=e.reportText.slice(0,50000).split('\n').filter(function(l){return l.trim();});
+        var blocks=chunks.slice(0,100).map(function(line){
+          var clean=line.replace(/^#+\s*/,'').replace(/\*\*(.*?)\*\*/g,'$1').trim();
+          if(line.match(/^##/)) return {object:'block',type:'heading_2',heading_2:{rich_text:[{type:'text',text:{content:clean.slice(0,200)}}]}};
+          if(line.match(/^#/))  return {object:'block',type:'heading_1',heading_1:{rich_text:[{type:'text',text:{content:clean.slice(0,200)}}]}};
+          return {object:'block',type:'paragraph',paragraph:{rich_text:[{type:'text',text:{content:clean.slice(0,2000)}}]}};
+        });
+        pageBody.children=blocks;
+      }
+
+      var resp=await fetch(NOTION_API+'/pages',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+        },
+        body:JSON.stringify(pageBody)
       });
-      if(!resp.ok) throw new Error('HTTP '+resp.status);
+
+      if(!resp.ok){
+        var errData=await resp.json();
+        throw new Error(errData.message||'HTTP '+resp.status);
+      }
+
       var idx=all.findIndex(function(x){return x.id===e.id;});
       if(idx>=0) all[idx].notionSynced=true;
       ok++;
-    } catch(ex){ fail++; console.error('sync error:',ex); }
+    } catch(ex){
+      fail++;
+      console.error('Notion sync error for '+e.ticker+':', ex.message);
+    }
   }
 
   localStorage.setItem('opt_hist',JSON.stringify(all));
   nsave.className=fail?'nsave error':'nsave';
   nsave.textContent=fail
-    ?'\u26A0 '+ok+' OK, '+fail+' con error'
+    ?'\u26A0 '+ok+' guardados, '+fail+' con error'
     :'\u2713 '+ok+' elemento'+(ok>1?'s':'')+' guardados en Notion';
   btn.disabled=false;
 }
@@ -1362,5 +1422,5 @@ document.addEventListener('click', function(e) {
 });
 
 </script>
-</body>
+</div></body>
 </html>

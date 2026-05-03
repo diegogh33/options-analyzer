@@ -302,11 +302,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .b-bad{background:rgba(255,82,82,.15);color:var(--red);}
 /* renderMd formatting */
 .rmd-h1{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--accent);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
-.rmd-h2{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 8px;padding:6px 10px;background:rgba(79,195,247,.06);border-left:3px solid var(--blue);border-radius:0 6px 6px 0;}
-.rmd-h3{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--amber);margin:12px 0 6px;padding-left:8px;border-left:2px solid var(--amber);}
+.rmd-h2{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--blue);margin:16px 0 4px;padding:6px 10px;background:rgba(79,195,247,.06);border-left:3px solid var(--blue);border-radius:0 6px 6px 0;}
+.rmd-h3{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--amber);margin:12px 0 2px;padding-left:8px;border-left:2px solid var(--amber);}
 .rmd-h4 strong{color:var(--text);font-size:13px;}
 .rmd-p{margin-bottom:8px;line-height:1.8;color:var(--text);}
-.rmd-p:empty{display:none;}
+.rmd-p:empty{display:none;}.rmd-p{margin-bottom:6px;line-height:1.75;}
 .rmd-hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
 #deepContent ul,.cmp-text ul,.rv-body ul{margin:6px 0 10px 0;padding:0;list-style:none;}
 #deepContent li,.cmp-text li,.rv-body li{padding:4px 0 4px 16px;position:relative;line-height:1.65;font-size:13px;color:var(--text);}
@@ -589,29 +589,89 @@ function renderMd(t) {
   if(!t) return '';
   // Normalize line endings
   t = t.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  // Remove excessive blank lines (3+ newlines -> 2)
+  // Remove excessive blank lines
   t = t.replace(/\n{3,}/g,'\n\n');
-  // Headings - styled with color and border
-  t = t.replace(/^#### (.+)$/gm,'<p class="rmd-h4"><strong>$1</strong></p>');
-  t = t.replace(/^### (.+)$/gm,'<div class="rmd-h3">$1</div>');
-  t = t.replace(/^## (.+)$/gm,'<div class="rmd-h2">$1</div>');
-  t = t.replace(/^# (.+)$/gm,'<div class="rmd-h1">$1</div>');
-  // Bold and italic
+
+  // Process line by line for accurate rendering
+  var lines = t.split('\n');
+  var out = [];
+  var i = 0;
+
+  while(i < lines.length) {
+    var line = lines[i];
+    var trimmed = line.trim();
+
+    // Skip empty lines - add paragraph break only if not between list items
+    if(!trimmed) {
+      if(out.length && out[out.length-1] !== '<br>') out.push('<br>');
+      i++; continue;
+    }
+
+    // H1
+    if(trimmed.match(/^# /)) {
+      out.push('<div class="rmd-h1">'+trimmed.slice(2).replace(/\*\*/g,'').trim()+'</div>');
+      i++; continue;
+    }
+    // H2
+    if(trimmed.match(/^## /)) {
+      out.push('<div class="rmd-h2">'+trimmed.slice(3).replace(/\*\*/g,'').trim()+'</div>');
+      i++; continue;
+    }
+    // H3
+    if(trimmed.match(/^### /)) {
+      out.push('<div class="rmd-h3">'+trimmed.slice(4).replace(/\*\*/g,'').trim()+'</div>');
+      i++; continue;
+    }
+    // H4
+    if(trimmed.match(/^#### /)) {
+      out.push('<p class="rmd-h4"><strong>'+trimmed.slice(5).replace(/\*\*/g,'').trim()+'</strong></p>');
+      i++; continue;
+    }
+    // HR
+    if(trimmed.match(/^---+$/)) {
+      out.push('<hr class="rmd-hr">');
+      i++; continue;
+    }
+    // List items: - or * or digit.
+    if(trimmed.match(/^[-\*] /) || trimmed.match(/^\d+\. /)) {
+      var listItems = [];
+      while(i < lines.length) {
+        var lt = lines[i].trim();
+        if(lt.match(/^[-\*] /)) {
+          listItems.push('<li>'+fmtInline(lt.slice(2).trim())+'</li>');
+          i++;
+        } else if(lt.match(/^\d+\. /)) {
+          listItems.push('<li>'+fmtInline(lt.replace(/^\d+\.\s*/,'').trim())+'</li>');
+          i++;
+        } else if(!lt) {
+          // empty line - peek ahead to see if next is also a list item
+          var j=i+1;
+          while(j<lines.length&&!lines[j].trim()) j++;
+          if(j<lines.length&&(lines[j].trim().match(/^[-\*] /)||lines[j].trim().match(/^\d+\. /))) {
+            i=j; // skip blank lines within list
+          } else { break; }
+        } else { break; }
+      }
+      out.push('<ul>'+listItems.join('')+'</ul>');
+      continue;
+    }
+    // Regular paragraph
+    out.push('<p class="rmd-p">'+fmtInline(trimmed)+'</p>');
+    i++;
+  }
+
+  // Remove consecutive <br> tags
+  var html = out.join('');
+  html = html.replace(/(<br>){2,}/g,'<br>');
+  html = html.replace(/<br>(<div class="rmd)/g,'$1');
+  html = html.replace(/(<\/div>)<br>/g,'$1');
+  return html;
+}
+
+function fmtInline(t) {
   t = t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
   t = t.replace(/\*(.+?)\*/g,'<em>$1</em>');
-  // Lists - group consecutive li items
-  t = t.replace(/^[\-\*] (.+)$/gm,'<li>$1</li>');
-  t = t.replace(/^\d+\. (.+)$/gm,'<li>$1</li>');
-  // Wrap consecutive li in ul
-  t = t.replace(/(<li>.*?<\/li>)\n(?=<li>)/g,'$1');
-  t = t.replace(/(<li>[\s\S]*?<\/li>)(?!\n<li>)/g,'<ul>$1</ul>');
-  // Horizontal rules
-  t = t.replace(/^---+$/gm,'<hr class="rmd-hr">');
-  // Double newline = paragraph break
-  t = t.replace(/\n\n/g,'</p><p class="rmd-p">');
-  // Single newline = line break only inside paragraphs
-  t = t.replace(/\n/g,'<br>');
-  return '<p class="rmd-p">'+t+'</p>';
+  return t;
 }
 
 // -

@@ -1216,72 +1216,97 @@ function renderCompareTab() {
 
 async function doCompare() {
   if(compareList.length<2){alert('Selecciona al menos 2 an\u00E1lisis.');return;}
-  var btn=g('btn-do-compare');
-  var result=g('cmp-result');
-  var output=g('cmp-output');
+  var btn=g('btn-do-compare'), result=g('cmp-result'), output=g('cmp-output');
   btn.disabled=true;
   result.style.display='block';
-  output.innerHTML='<div class="loading-state"><div class="spinner vis" style="margin:0 auto 10px;"></div><div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Claude est\u00E1 comparando los an\u00E1lisis...</div></div>';
+  output.innerHTML='<div class="loading-state"><div class="spinner vis" style="margin:0 auto 10px;"></div><div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Comparando operaciones...</div></div>';
+
+  // Build rich description including report summary if available
+  var allStored=JSON.parse(localStorage.getItem('opt_hist')||'[]');
 
   var desc=compareList.map(function(d,i){
     var lines=[];
-    lines.push((i+1)+'. '+d.ticker+' - '+d.tipoOperacion+' Strike $'+d.strike+' - '+d.dte+' DTE - Prima $'+parseFloat(d.prima||0).toFixed(2));
-    lines.push('   Score: '+(d.puntuacion||'N/A')+'/100 | Veredicto: '+(d.veredicto||'N/A'));
-    lines.push('   IV: '+(d.iv||'N/A')+'% | Delta: '+(d.delta||'N/A'));
-    if(d.arorc) lines.push('   ARORC: '+d.arorc+'%');
-    if(d.tesis&&d.tesis!=='Sin tesis especificada') lines.push('   Tesis: '+d.tesis);
-    else lines.push('   Tesis: No especificada (el usuario no rellen&#243; este campo)');
+    lines.push('--- OPERACI\u00D3N '+(i+1)+': '+d.ticker+' ---');
+    lines.push('Tipo: '+d.tipoOperacion+' | Strike: $'+d.strike+' | DTE: '+d.dte+' | Prima: $'+parseFloat(d.prima||0).toFixed(2));
+    lines.push('Precio spot: $'+(d.spot||'N/A')+' | IV: '+(d.iv||'N/A')+'% | Delta: '+(d.delta||'N/A'));
+    lines.push('Score: '+(d.puntuacion||'N/A')+'/100 | Veredicto r\u00E1pido: '+(d.veredicto||'N/A'));
+    if(d.arorc) lines.push('ARORC: '+d.arorc+'%');
+    if(d.tesis&&d.tesis!=='Sin tesis especificada'&&d.tesis!=='undefined') {
+      lines.push('Tesis: '+d.tesis);
+    }
+    // Include report verdict if available
+    var stored=allStored.find(function(e){return e.id===d.id;});
+    if(stored&&stored.verdictFinal) {
+      lines.push('Veredicto del informe institucional: '+stored.verdictFinal);
+    }
+    if(stored&&stored.reportText) {
+      // Extract key sections from report: veredicto and stress tests
+      var reportSnippet=stored.reportText;
+      var verdIdx=reportSnippet.search(/## 11|## VEREDICTO/i);
+      if(verdIdx>=0) {
+        lines.push('Extracto veredicto institucional: '+reportSnippet.slice(verdIdx, verdIdx+800).replace(/[#*]/g,'').trim());
+      }
+    }
     return lines.join('\n');
   }).join('\n\n');
+
+  var prompt='Eres un Senior Investment Partner con 20 a\u00F1os de experiencia en trading de opciones. '
+    +'Tu rol es ser una herramienta potente de an\u00E1lisis, no un sistema de alarmas. '
+    +'El usuario ya ha analizado estas operaciones en profundidad. Tu trabajo es comparar, matizar y recomendar.\n\n'
+    +'OPERACIONES A COMPARAR:\n\n'+desc+'\n\n'
+    +'INSTRUCCIONES IMPORTANTES:\n'
+    +'- Si ambas operaciones son v\u00E1lidas, d\u00EDlo claramente y explica cu\u00E1l ejecutar\u00EDas primero y por qu\u00E9\n'
+    +'- Si una es claramente mejor, justif\u00EDcalo con datos concretos (delta, DTE, ARORC, timing de earnings, etc.)\n'
+    +'- Si hay algo que cambiar\u00EDas en alguna (strike, DTE, tama\u00F1o), prop\u00F3nlo con un ejemplo espec\u00EDfico\n'
+    +'- NO rechaces operaciones \u00FAnicamente por falta de tesis en el campo de texto. Si hay informe institucional, \u00FAsalo\n'
+    +'- S\u00E9 directo: el usuario quiere tu opini\u00F3n real, no advertencias gen\u00E9ricas\n\n'
+    +'ESTRUCTURA DE RESPUESTA:\n'
+    +'1. MI ELECCI\u00D3N: [ticker y operaci\u00F3n, o "Ambas v\u00E1lidas, priorizo X")] - una sola l\u00EDnea directa\n'
+    +'2. POR QU\u00C9: 3-4 razones concretas basadas en los datos\n'
+    +'3. AN\u00C1LISIS DE CADA OPERACI\u00D3N: pros y contras reales de cada una\n'
+    +'4. QU\u00C9 CAMBIAR\u00CDA: si hay ajustes que mejorar\u00EDan el setup (strike, DTE, sizing), prop\u00F3nlos con n\u00FAmeros\n'
+    +'5. CONCLUSI\u00D3N: una frase final en negrita';
 
   try {
     var resp=await fetch('https://options-proxy.dvich33.workers.dev',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
+        model:'claude-sonnet-4-5-20250929',
         max_tokens:2000,
-        messages:[{role:'user',content:
-          'Eres un Senior Investment Partner. Compara estos '+compareList.length+' an\u00E1lisis de opciones y decide cu\u00E1l ejecutar\u00EDas y por qu\u00E9. Si ninguno es recomendable, dilo claramente.\n\n'+desc+'\n\n'+
-          'Estructura tu respuesta en espa\u00F1ol:\n1. GANADOR (o NINGUNO si no hay candidato claro) \u2014 una l\u00EDnea directa\n2. JUSTIFICACI\u00D3N \u2014 por qu\u00E9 ese y no los otros\n3. AN\u00C1LISIS DE CADA OPERACI\u00D3N \u2014 pros y contras de cada una\n4. AJUSTES SUGERIDOS \u2014 si hay mejoras posibles a alg\u00FAn setup\n\nS\u00E9 directo y sin eufemismos.'
-        }]
+        messages:[{role:'user',content:prompt}]
       })
     });
     var data=await resp.json();
     var txt='';
     if(data.content) data.content.forEach(function(b){if(b.type==='text') txt+=b.text;});
 
-    // Parse the response into sections
-    var lines = txt.split('\n').filter(function(l){return l.trim();});
-    var winnerLine = '';
-    var bodyLines = [];
-    var foundWinner = false;
+    // Parse winner line
+    var lines=txt.split('\n').filter(function(l){return l.trim();});
+    var winnerLine='';
     for(var li=0;li<lines.length;li++){
-      var line = lines[li].trim();
-      if(!foundWinner && (line.match(/^(GANADOR|NINGUNO|EJECUTAR|ESPERAR|DESCARTAR|MI ELECCI)/i) || line.match(/^\d+\.\s*(GANADOR|NINGUNO)/i))){
-        winnerLine = line.replace(/^[#*\d\.]+\s*/,'').replace(/\*\*/g,'');
-        foundWinner = true;
-      } else {
-        bodyLines.push(line);
+      var line=lines[li].trim().replace(/^[#*\d\.\s]+/,'').replace(/\*\*/g,'');
+      if(line.match(/MI ELECCI/i)&&li+1<lines.length){
+        winnerLine=lines[li+1].trim().replace(/^[#*\-\s]+/,'').replace(/\*\*/g,'');
+        break;
       }
     }
-    if(!winnerLine) winnerLine = lines[0]||'Ver an\u00E1lisis';
+    if(!winnerLine) winnerLine=lines[0]||'Ver an\u00E1lisis';
 
-    var winnerColor = winnerLine.match(/NINGUNO|EVITAR|NO EJECUTO/i) ? 'var(--red)' :
-                      winnerLine.match(/ESPERAR|REVISAR/i) ? 'var(--amber)' : 'var(--green)';
+    var winnerColor=winnerLine.match(/NINGUNO|EVITAR|NO EJECUTO/i)?'var(--red)':
+                    winnerLine.match(/ESPERAR|REVISAR/i)?'var(--amber)':'var(--green)';
 
-    output.innerHTML =
-      '<div class="winner-box" style="border-color:'+winnerColor+';background:rgba(0,0,0,0.2);">'
-      +'<div class="winner-lbl" style="color:'+winnerColor+';">RECOMENDACI\u00D3N DE CLAUDE</div>'
+    output.innerHTML=
+      '<div class="winner-box" style="border-color:'+winnerColor+';background:rgba(0,0,0,0.15);">'
+      +'<div class="winner-lbl" style="color:'+winnerColor+';">MI ELECCI\u00D3N</div>'
       +'<div class="winner-txt" style="font-size:15px;font-weight:700;color:'+winnerColor+';line-height:1.4;">'+winnerLine+'</div>'
       +'</div>'
-      +'<div class="cmp-text" style="margin-top:12px;">'+renderMd(bodyLines.join('\n'))+'</div>';
-    btn.disabled=false;
+      +'<div class="cmp-text" style="margin-top:12px;">'+renderMd(txt)+'</div>';
 
-    // Guardar comparaci?n en Notion
+    btn.disabled=false;
     saveCmpToNotion(compareList, txt);
 
-  } catch(e) {
+  } catch(e){
     output.innerHTML='<p style="color:var(--red);font-size:12px;">\u26A0 '+e.message+'</p>';
     btn.disabled=false;
   }

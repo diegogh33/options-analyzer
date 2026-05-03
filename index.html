@@ -18,7 +18,41 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding-bottom:60px;}
-.page-wrap{max-width:720px;margin:0 auto;}
+@media(min-width:768px){
+  body{font-size:15px;}
+  .fi{font-size:15px;padding:13px 15px;}
+  .irow{font-size:14px;}
+  .mc-v{font-size:20px;}
+  .mc-l{font-size:11px;}
+  .sb-name{font-size:14px;}
+  .sb-desc{font-size:12px;}
+  .sl_abel{font-size:11px;}
+  .iblock-t{font-size:11px;}
+  .sug-txt{font-size:13px;}
+  .cl{font-size:13px;}
+  .cd{font-size:11px;}
+  #deepContent{font-size:14px;line-height:1.9;}
+  #deepContent h2{font-size:16px;}
+  #deepContent h3{font-size:15px;}
+  .verdict-value{font-size:26px;}
+  .v-sub{font-size:13px;}
+  .rtag{font-size:13px;}
+  .disclaimer{font-size:12px;}
+  .btn-main{font-size:15px;padding:16px;}
+  .btn-out{font-size:13px;padding:13px;}
+  .tab{font-size:13px;padding:12px 8px;}
+  .hdr-top h1{font-size:16px;}
+  .ac-strat{font-size:13px;}
+  .ac-date{font-size:11px;}
+  .pparam{font-size:11px;}
+  .tg-ticker{font-size:18px;}
+  .tg-name{font-size:13px;}
+  .tg-price{font-size:15px;}
+  .score-ring{width:80px;height:80px;}
+  .ring-num{font-size:18px;}
+  .ring svg{width:80px;height:80px;}
+}
+.page-wrap{max-width:960px;margin:0 auto;padding:0 20px;}
 
 /* &#9472;&#9472; HEADER &#9472;&#9472; */
 .hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 16px 0;position:sticky;top:0;z-index:100;}
@@ -826,7 +860,7 @@ async function deepDive(mode) {
   try {
     var sr=await fetch('https://options-proxy.dvich33.workers.dev',{method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:300,
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:150,
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:'Exact current stock price of '+d.ticker+' today '+todayISO+'. Reply ONLY JSON: {"price":123.45,"source":"Yahoo Finance","date":"'+todayISO+'"} No other text.'}]
       })
@@ -850,7 +884,7 @@ async function deepDive(mode) {
   try {
     var er=await fetch('https://options-proxy.dvich33.workers.dev',{method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:400,
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:200,
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:'Last and next earnings report dates for '+d.ticker+'. Today is '+todayISO+'. Reply ONLY JSON: {"last_earnings":"2025-02-14","last_eps_actual":1.23,"last_eps_estimate":1.10,"last_surprise_pct":11.8,"next_earnings":"2025-05-14","next_confirmed":true} Use null for unknowns. No other text.'}]
       })
@@ -881,6 +915,8 @@ async function deepDive(mode) {
   content.innerHTML=priceHtml+earningsHtml;
 
   var isExtended=(mode===2);
+  // Small delay to avoid rate limit from concurrent calls
+  await new Promise(function(resolve){setTimeout(resolve,2000);});
   status.textContent='Generando informe de '+d.ticker+'...';
 
   var prompt='Eres un Senior Investment Partner con 20 anos de experiencia en equity research y trading de opciones.\n'
@@ -922,7 +958,7 @@ async function deepDive(mode) {
   try {
     var resp=await fetch('https://options-proxy.dvich33.workers.dev',{method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,stream:true,
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:6000,stream:true,
         messages:[{role:'user',content:prompt}]})
     });
     if(!resp.ok){

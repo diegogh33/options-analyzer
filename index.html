@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Options Analyzer IBKR v10</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0a0f; --bg2:#111118; --bg3:#1a1a24; --bg4:#20202e;
+  --border:#2a2a3a; --border2:#3a3a50;
+  --text:#e8e8f0; --muted:#606080;
+  --accent:#7c6fff; --green:#3ddc84; --red:#ff5252; --amber:#ffb830; --blue:#4fc3f7;
+  --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding-bottom:60px;}
+
+/* &#9472;&#9472; HEADER &#9472;&#9472; */
+.hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 16px 0;position:sticky;top:0;z-index:100;}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.hdr-top h1{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--accent);letter-spacing:.04em;}
+.notion-badge{display:flex;align-items:center;gap:5px;background:rgba(124,111,255,.1);border:1px solid rgba(124,111,255,.3);border-radius:20px;padding:3px 10px;font-family:var(--mono);font-size:10px;color:var(--accent);}
+.ndot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* &#9472;&#9472; TABS &#9472;&#9472; */
+.tabs{display:flex;}
+.tab{flex:1;text-align:center;padding:10px 4px;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);letter-spacing:.06em;border-bottom:2px solid transparent;cursor:pointer;transition:all .15s;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* &#9472;&#9472; LAYOUT &#9472;&#9472; */
+.wrap{padding:14px;}
+.slabel{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;display:flex;align-items:center;gap:8px;margin:18px 0 10px;}
+.slabel:first-child{margin-top:0;}
+.slabel::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* &#9472;&#9472; STRAT BUTTONS &#9472;&#9472; */
+.strat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.sb{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px 12px;cursor:pointer;text-align:left;transition:all .15s;}
+.sb:active{transform:scale(.97);}
+.sb.sel-lc{border-color:var(--green);background:rgba(61,220,132,.08);}
+.sb.sel-lp{border-color:var(--red);background:rgba(255,82,82,.08);}
+.sb.sel-sc{border-color:var(--amber);background:rgba(255,184,48,.08);}
+.sb.sel-sp{border-color:var(--blue);background:rgba(79,195,247,.08);}
+.sb-name{font-family:var(--mono);font-size:12px;font-weight:600;display:block;margin-bottom:3px;color:var(--muted);}
+.sel-lc .sb-name{color:var(--green);} .sel-lp .sb-name{color:var(--red);}
+.sel-sc .sb-name{color:var(--amber);} .sel-sp .sb-name{color:var(--blue);}
+.sb-desc{font-size:10px;color:var(--muted);line-height:1.4;}
+
+/* &#9472;&#9472; PROFILE PILL &#9472;&#9472; */
+.ppill{display:none;border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.7;margin-top:8px;border:1px solid;}
+.ppill.vis{display:block;}
+.pf-lc{background:rgba(61,220,132,.06);border-color:rgba(61,220,132,.3);color:#a8f0c8;}
+.pf-lp{background:rgba(255,82,82,.06);border-color:rgba(255,82,82,.3);color:#ffb0b0;}
+.pf-sc{background:rgba(255,184,48,.06);border-color:rgba(255,184,48,.3);color:#ffd88a;}
+.pf-sp{background:rgba(79,195,247,.06);border-color:rgba(79,195,247,.3);color:#a0ddf7;}
+
+/* &#9472;&#9472; FIELDS &#9472;&#9472; */
+.field{margin-bottom:10px;}
+.field label{display:block;font-family:var(--mono);font-size:9px;font-weight:500;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;}
+.field label em{font-style:normal;color:#3a3a55;font-size:8px;letter-spacing:0;text-transform:none;}
+.fi{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 13px;outline:none;appearance:none;-webkit-appearance:none;transition:border-color .15s;}
+.fi:focus{border-color:var(--accent);}
+.fi::placeholder{color:#2e2e48;}
+.fi.fsel{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23606080' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* &#9472;&#9472; INFORME SELECTOR &#9472;&#9472; */
+.report-sel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px;margin-top:14px;}
+.report-sel-title{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.ropt{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;cursor:pointer;}
+.ropt:last-child{margin-bottom:0;}
+.rcheck{width:18px;height:18px;border:1px solid var(--border2);border-radius:4px;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;margin-top:1px;transition:all .15s;}
+.rcheck.on{border-color:var(--accent);background:rgba(124,111,255,.2);color:var(--accent);}
+.ropt-label{font-size:12px;color:var(--text);display:block;margin-bottom:2px;}
+.ropt-sub{font-size:10px;color:var(--muted);}
+
+/* &#9472;&#9472; BUTTONS &#9472;&#9472; */
+.btn-main{width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:14px;font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;margin-top:10px;transition:opacity .15s,transform .1s;}
+.btn-main:active{transform:scale(.98);opacity:.9;}
+.btn-main:disabled{opacity:.5;cursor:not-allowed;}
+.btn-out{width:100%;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:10px;padding:11px;font-family:var(--mono);font-size:11px;font-weight:500;cursor:pointer;margin-top:8px;transition:background .15s;}
+.btn-out:active{background:rgba(124,111,255,.1);}
+.btn-out:disabled{opacity:.5;cursor:not-allowed;}
+.btn-sm{font-size:10px;padding:7px 13px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;font-family:var(--mono);}
+.btn-sm.active{border-color:var(--accent);color:var(--accent);background:rgba(124,111,255,.08);}
+
+/* &#9472;&#9472; OUTPUT &#9472;&#9472; */
+#output{display:none;} #output.vis{display:block;}
+
+/* &#9472;&#9472; VERDICT &#9472;&#9472; */
+.verdict{border-radius:10px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;margin-top:16px;margin-bottom:12px;}
+.verdict.go{background:rgba(61,220,132,.08);border:1px solid rgba(61,220,132,.3);}
+.verdict.wait{background:rgba(255,184,48,.08);border:1px solid rgba(255,184,48,.3);}
+.verdict.no{background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.3);}
+.v-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:2px;letter-spacing:.06em;}
+.v-val{font-family:var(--mono);font-size:20px;font-weight:600;}
+.verdict.go .v-val{color:var(--green);} .verdict.wait .v-val{color:var(--amber);} .verdict.no .v-val{color:var(--red);}
+.v-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* &#9472;&#9472; ALERT &#9472;&#9472; */
+.alert{border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.6;margin-bottom:10px;border:1px solid;}
+.alert-d{background:rgba(255,82,82,.08);border-color:rgba(255,82,82,.3);color:#ffb0b0;}
+.alert-w{background:rgba(255,184,48,.08);border-color:rgba(255,184,48,.3);color:#ffd88a;}
+
+/* &#9472;&#9472; METRICS &#9472;&#9472; */
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px;}
+.mc{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;}
+.mc-l{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px;}
+.mc-v{font-family:var(--mono);font-size:16px;font-weight:600;}
+.cg{color:var(--green);} .cr{color:var(--red);} .ca{color:var(--accent);} .cw{color:var(--amber);}
+
+/* &#9472;&#9472; SCORE &#9472;&#9472; */
+.iblock{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:10px;}
+.iblock-t{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:11px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.score-wrap{display:flex;align-items:center;gap:14px;}
+.ring{position:relative;width:64px;height:64px;flex-shrink:0;}
+.ring svg{display:block;}
+.ring-num{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--mono);font-size:15px;font-weight:600;}
+.crits{flex:1;}
+.crit{display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;}
+.crit:last-child{margin-bottom:0;}
+.cl{font-size:11px;color:var(--text);flex:1;line-height:1.4;}
+.cd{font-size:9px;color:var(--muted);}
+.cbadge{font-family:var(--mono);font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0;margin-top:1px;}
+.b-ok{background:rgba(61,220,132,.15);color:var(--green);}
+.b-warn{background:rgba(255,184,48,.15);color:var(--amber);}
+.b-bad{background:rgba(255,82,82,.15);color:var(--red);}
+
+/* &#9472;&#9472; SUGS &#9472;&#9472; */
+.sug{display:flex;gap:9px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:7px;}
+.sug:last-child{margin-bottom:0;}
+.sug-icon{font-size:14px;flex-shrink:0;margin-top:1px;}
+.sug-txt{font-size:12px;line-height:1.6;color:var(--text);}
+.sug-txt b{color:#fff;font-weight:600;}
+
+/* &#9472;&#9472; INFO ROWS &#9472;&#9472; */
+.irow{display:flex;gap:8px;margin-bottom:8px;font-size:12px;line-height:1.5;}
+.irow:last-child{margin-bottom:0;}
+.ik{font-family:var(--mono);font-size:10px;color:var(--muted);min-width:82px;flex-shrink:0;padding-top:1px;}
+.iv{color:var(--text);font-size:12px;word-break:break-word;}
+.cpill{display:inline-block;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;font-family:var(--mono);font-size:10px;padding:1px 6px;color:var(--accent);}
+.ok{color:var(--green);} .warn{color:var(--amber);} .bad{color:var(--red);}
+
+/* &#9472;&#9472; BAR &#9472;&#9472; */
+.bar-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:5px;}
+.bar-track{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;transition:width .5s;}
+
+/* &#9472;&#9472; TAGS &#9472;&#9472; */
+.tag-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.rtag{background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:4px 11px;font-size:11px;color:var(--muted);font-family:var(--mono);}
+
+/* &#9472;&#9472; NOTION SAVE &#9472;&#9472; */
+.nsave{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;color:var(--green);background:rgba(61,220,132,.06);border:1px solid rgba(61,220,132,.2);border-radius:8px;padding:8px 12px;margin-top:10px;}
+.nsave.saving{color:var(--amber);background:rgba(255,184,48,.06);border-color:rgba(255,184,48,.2);}
+.nsave.error{color:var(--red);background:rgba(255,82,82,.06);border-color:rgba(255,82,82,.2);}
+
+/* &#9472;&#9472; DEEP DIVE &#9472;&#9472; */
+#deepPanel{display:none;margin-top:10px;}
+#deepPanel.vis{display:block;}
+.deep-hdr{background:var(--bg2);border:1px solid var(--border);border-radius:10px 10px 0 0;padding:11px 13px;display:flex;align-items:center;gap:9px;}
+.deep-status{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.04em;}
+.spinner{width:13px;height:13px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;display:none;}
+.spinner.vis{display:block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#deepContent{background:var(--bg2);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:14px;font-size:12px;line-height:1.85;color:var(--text);min-height:40px;}
+#deepContent h2,#deepContent h3{font-family:var(--mono);color:var(--accent);margin:16px 0 7px;font-size:12px;letter-spacing:.04em;border-bottom:1px solid var(--border);padding-bottom:5px;}
+#deepContent h2:first-child{margin-top:0;}
+#deepContent strong,#deepContent b{color:#fff;font-weight:600;}
+#deepContent em{color:var(--muted);}
+#deepContent p{margin-bottom:9px;}
+#deepContent li{margin-bottom:3px;margin-left:16px;}
+.price-note{font-family:var(--mono);font-size:10px;color:var(--amber);margin-bottom:11px;padding:7px 10px;background:rgba(255,184,48,.06);border:1px solid rgba(255,184,48,.2);border-radius:6px;}
+.disclaimer{font-size:10px;color:var(--muted);line-height:1.6;padding:10px 12px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);margin-top:10px;}
+
+/* &#9472;&#9472; HISTORY TAB &#9472;&#9472; */
+#tab-history{display:none;}
+.hist-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.hist-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.06em;}
+.filter-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;}
+
+.compare-bar{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;gap:9px;}
+.compare-bar-txt{flex:1;font-size:11px;color:var(--muted);line-height:1.5;}
+.compare-bar-txt b{color:var(--text);}
+
+.tgroup{margin-bottom:18px;}
+.tg-hdr{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;padding:0 2px;}
+.tg-ticker{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--text);}
+.tg-name{font-size:12px;color:var(--muted);}
+.tg-price{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--blue);margin-left:auto;}
+.tg-count{font-family:var(--mono);font-size:9px;color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:2px 7px;border-radius:20px;}
+
+.acard{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 13px;margin-bottom:7px;cursor:pointer;transition:border-color .15s;}
+.acard:hover{border-color:var(--border2);}
+.acard.has-report{border-left:3px solid var(--accent);}
+.acard.compare-selected{border-color:var(--accent);background:rgba(124,111,255,.05);}
+.ac-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px;}
+.ac-strat{font-family:var(--mono);font-size:11px;font-weight:600;}
+.ac-date{font-family:var(--mono);font-size:9px;color:var(--muted);}
+.ac-params{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px;}
+.pparam{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);}
+.ac-bot{display:flex;align-items:center;gap:7px;}
+.ac-score{font-family:var(--mono);font-size:11px;font-weight:600;}
+.ac-verdict{font-family:var(--mono);font-size:9px;font-weight:600;padding:2px 8px;border-radius:4px;}
+.av-op{background:rgba(61,220,132,.15);color:var(--green);}
+.av-rev{background:rgba(255,184,48,.15);color:var(--amber);}
+.av-no{background:rgba(255,82,82,.15);color:var(--red);}
+.rep-badge{display:flex;align-items:center;gap:3px;font-family:var(--mono);font-size:9px;color:var(--accent);background:rgba(124,111,255,.08);border:1px solid rgba(124,111,255,.2);border-radius:4px;padding:2px 7px;margin-left:auto;}
+.acard-expanded{background:var(--bg3);border-radius:0 0 8px 8px;padding:11px 12px;margin:-1px -1px 0;border:1px solid var(--border);border-top:1px solid var(--border2);display:none;}
+.acard-expanded.vis{display:block;}
+.exp-sec-t{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;}
+.exp-sec-txt{font-size:11px;color:#a0a0c0;line-height:1.65;margin-bottom:10px;}
+.exp-sec-txt b{color:var(--text);}
+
+/* &#9472;&#9472; HISTORY REPORT VIEWER &#9472;&#9472; */
+.rv{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:10px;display:none;}
+.rv.vis{display:block;}
+.rv-hdr{background:var(--bg3);padding:10px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.rv-title{font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:600;letter-spacing:.04em;}
+.rv-close{font-size:16px;color:var(--muted);cursor:pointer;background:none;border:none;padding:0;}
+.rv-body{padding:13px;max-height:60vh;overflow-y:auto;}
+
+/* &#9472;&#9472; COMPARE TAB &#9472;&#9472; */
+#tab-compare{display:none;}
+.sel-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+.sel-card.on{border-color:var(--accent);background:rgba(124,111,255,.05);}
+.sel-chk{width:18px;height:18px;border:1px solid var(--border2);border-radius:4px;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .15s;}
+.sel-chk.on{border-color:var(--accent);background:rgba(124,111,255,.2);color:var(--accent);}
+.sel-info{flex:1;}
+.sel-strat{font-family:var(--mono);font-size:11px;font-weight:600;margin-bottom:2px;}
+.sel-sub{font-size:10px;color:var(--muted);}
+
+.cmp-result{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px;margin-top:12px;}
+.cmp-result-t{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:11px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.winner-box{background:var(--bg3);border:1px solid rgba(61,220,132,.25);border-radius:8px;padding:11px 12px;margin-bottom:10px;}
+.winner-lbl{font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:.08em;font-weight:600;margin-bottom:5px;}
+.winner-txt{font-size:11px;color:#a0a0c0;line-height:1.7;}
+.winner-txt b{color:var(--text);}
+.cmp-text{font-size:11px;color:#a0a0c0;line-height:1.7;}
+.cmp-text b{color:var(--text);}
+.empty-state{text-align:center;padding:40px 20px;}
+.empty-icon{font-size:34px;margin-bottom:12px;}
+.empty-t{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;}
+.empty-s{font-size:11px;color:#3a3a55;line-height:1.6;}
+.loading-state{text-align:center;padding:30px 20px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-top">
+    <h1>OPTIONS ANALYZER</h1>
+    <div class="notion-badge"><div class="ndot"></div>Notion sync</div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="analyzer">ANALIZAR</div>
+    <div class="tab" data-tab="history">HIST&Oacute;RICO</div>
+    <div class="tab" data-tab="compare">COMPARAR</div>
+  </div>
+</div>
+
+<!--  TAB: ANALIZAR  -->
+<div id="tab-analyzer" class="wrap">
+
+  <div class="slabel">01 &middot; Tipo de operaci&oacute;n</div>
+  <div class="strat-grid">
+    <div class="sb" id="s-lc" data-sel="lc"><span class="sb-name">Long Call</span><span class="sb-desc">Compra CALL &middot; Alcista &middot; Riesgo limitado</span></div>
+    <div class="sb" id="s-lp" data-sel="lp"><span class="sb-name">Long Put</span><span class="sb-desc">Compra PUT &middot; Bajista &middot; Riesgo limitado</span></div>
+    <div class="sb" id="s-sc" data-sel="sc"><span class="sb-name">Short Call</span><span class="sb-desc">Venta CALL &middot; Neutral/bajista &middot; Riesgo &infin;</span></div>
+    <div class="sb" id="s-sp" data-sel="sp"><span class="sb-name">Short Put</span><span class="sb-desc">Venta PUT &middot; Alcista &middot; Riesgo elevado</span></div>
+  </div>
+  <div class="ppill pf-lc" id="p-lc"><b>Long Call:</b> Pagas la prima. Riesgo m&aacute;x = prima. Beneficio ilimitado si sube. Theta &minus; &middot; Vega +</div>
+  <div class="ppill pf-lp" id="p-lp"><b>Long Put:</b> Pagas la prima. Riesgo m&aacute;x = prima. Beneficio si cae. Theta &minus; &middot; Vega +</div>
+  <div class="ppill pf-sc" id="p-sc"><b>Short Call:</b> Cobras la prima. Riesgo ilimitado si sube. Theta + &middot; Requiere margen y nivel avanzado IBKR.</div>
+  <div class="ppill pf-sp" id="p-sp"><b>Short Put:</b> Cobras la prima. Riesgo elevado si colapsa. Theta + &middot; Equivale a querer comprar con descuento.</div>
+
+  <div class="slabel">02 &middot; Subyacente</div>
+  <div class="field"><label>Ticker</label><input class="fi" type="text" id="f-ticker" placeholder="ej. NOW" style="text-transform:uppercase;font-size:18px;font-weight:600;"></div>
+  <div class="frow">
+    <div class="field"><label>Precio actual ($)</label><input class="fi" type="number" id="f-spot" placeholder="ej. 90.98" step="0.01" inputmode="decimal"></div>
+    <div class="field"><label>IV impl&iacute;cita (%)</label><input class="fi" type="number" id="f-iv" placeholder="ej. 56" step="1" inputmode="numeric"></div>
+  </div>
+
+  <div class="slabel">03 &middot; Par&aacute;metros opci&oacute;n</div>
+  <div class="frow">
+    <div class="field"><label>Strike ($)</label><input class="fi" type="number" id="f-strike" placeholder="ej. 75" step="0.50" inputmode="decimal"></div>
+    <div class="field"><label>DTE (d&iacute;as)</label><input class="fi" type="number" id="f-dte" placeholder="ej. 45" step="1" inputmode="numeric"></div>
+  </div>
+  <div class="frow">
+    <div class="field"><label>Prima ($)</label><input class="fi" type="number" id="f-premium" placeholder="ej. 8.20" step="0.05" inputmode="decimal"></div>
+    <div class="field"><label>Delta IBKR <em>(recomendado)</em></label><input class="fi" type="number" id="f-delta" placeholder="ej. 0.245" step="0.001" inputmode="decimal"></div>
+  </div>
+  <div class="frow">
+    <div class="field"><label>Contratos</label><input class="fi" type="number" id="f-contracts" value="1" step="1" inputmode="numeric"></div>
+    <div class="field"><label>Capital total ($)</label><input class="fi" type="number" id="f-capital" placeholder="ej. 150000" step="1000" inputmode="numeric"></div>
+  </div>
+
+  <div class="slabel">04 &middot; Contexto</div>
+  <div class="field"><label>Tendencia</label>
+    <select class="fi fsel" id="f-trend">
+      <option value="bullish">&#128200; Alcista (risk-on)</option>
+      <option value="neutral">&#10145; Neutral / lateral</option>
+      <option value="bearish">&#128201; Bajista (risk-off)</option>
+    </select>
+  </div>
+  <div class="field"><label>Catalizador</label>
+    <select class="fi fsel" id="f-catalyst">
+      <option value="earnings">&#128202; Earnings pr&oacute;ximos</option>
+      <option value="technical">&#128208; Rebote t&eacute;cnico</option>
+      <option value="data">&#127963; Dato macro</option>
+      <option value="regulatory">&#9878; Evento regulatorio</option>
+      <option value="none">&mdash; Sin catalizador claro</option>
+    </select>
+  </div>
+  <div class="field"><label>Tesis principal</label><input class="fi" type="text" id="f-thesis" placeholder="ej. Ca&iacute;da post-earnings injustificada, fundamentos intactos"></div>
+
+  <!-- INFORME SELECTOR -->
+  <div class="report-sel">
+    <div class="report-sel-title">&#128203; Informe institucional</div>
+    <div class="ropt" data-report="0">
+      <div class="rcheck" id="rc-0">&#10003;</div>
+      <div><span class="ropt-label">Sin informe &mdash; solo an&aacute;lisis r&aacute;pido</span><span class="ropt-sub">Guardado autom&aacute;ticamente en Notion</span></div>
+    </div>
+    <div class="ropt" data-report="1">
+      <div class="rcheck" id="rc-1"></div>
+      <div><span class="ropt-label">Informe est&aacute;ndar (10 secciones)</span><span class="ropt-sub">~2 min &middot; Guardado en Notion autom&aacute;ticamente</span></div>
+    </div>
+    <div class="ropt" data-report="2">
+      <div class="rcheck" id="rc-2"></div>
+      <div><span class="ropt-label">Informe extendido (m&aacute;xima profundidad)</span><span class="ropt-sub">~4 min &middot; Valoraci&oacute;n detallada + stress tests ampliados</span></div>
+    </div>
+  </div>
+
+  <button class="btn-main" id="btn-analyze" data-action="analyze">GENERAR AN&Aacute;LISIS &#8599;</button>
+
+  <!-- OUTPUT -->
+  <div id="output">
+    <div class="verdict" id="o-verdict">
+      <div><div class="v-lbl">VEREDICTO</div><div class="v-val" id="o-vtext">&mdash;</div><div class="v-sub" id="o-vsub">&mdash;</div></div>
+      <div style="font-size:32px" id="o-vicon">&mdash;</div>
+    </div>
+
+    <div id="o-alert"></div>
+
+    <div class="metrics">
+      <div class="mc"><div class="mc-l">Coste / colateral</div><div class="mc-v ca" id="o-cost">&mdash;</div></div>
+      <div class="mc"><div class="mc-l">Beneficio m&aacute;x.</div><div class="mc-v cg" id="o-profit">&mdash;</div></div>
+      <div class="mc"><div class="mc-l">P&eacute;rdida m&aacute;x.</div><div class="mc-v cr" id="o-loss">&mdash;</div></div>
+      <div class="mc"><div class="mc-l">R/R &middot; ARORC</div><div class="mc-v ca" id="o-rr">&mdash;</div></div>
+    </div>
+
+    <div class="iblock">
+      <div class="iblock-t">Puntuaci&oacute;n del setup &middot; criterios clave</div>
+      <div class="score-wrap">
+        <div class="ring">
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="26" fill="none" stroke="#1a1a24" stroke-width="7"/>
+            <circle id="score-arc" cx="32" cy="32" r="26" fill="none" stroke="#3ddc84" stroke-width="7"
+              stroke-dasharray="163.4" stroke-dashoffset="163.4" stroke-linecap="round"
+              transform="rotate(-90 32 32)"/>
+          </svg>
+          <div class="ring-num" id="score-num">&mdash;</div>
+        </div>
+        <div class="crits" id="o-criteria"></div>
+      </div>
+    </div>
+
+    <div class="iblock">
+      <div class="iblock-t">&#128161; Sugerencias y alertas</div>
+      <div id="o-sugs"></div>
+    </div>
+
+    <div class="iblock">
+      <div class="iblock-t">Orden IBKR (TWS)</div>
+      <div id="o-trade"></div>
+    </div>
+
+    <div class="iblock">
+      <div class="iblock-t">Greeks y timing</div>
+      <div id="o-greeks"></div>
+    </div>
+
+    <div class="iblock">
+      <div class="iblock-t">Peso en cartera</div>
+      <div class="bar-labels"><span>Exposici&oacute;n efectiva</span><span id="o-barpct">&mdash;</span></div>
+      <div class="bar-track"><div class="bar-fill" id="o-barfill" style="width:0%"></div></div>
+      <div class="bar-labels" style="margin-top:5px"><span>L&iacute;mite recomendado</span><span class="cw">2.0%</span></div>
+    </div>
+
+    <div class="iblock">
+      <div class="iblock-t">Gesti&oacute;n y salida</div>
+      <div id="o-exit"></div>
+    </div>
+
+    <div class="slabel" style="margin-top:18px">Factores de riesgo</div>
+    <div class="tag-wrap" id="o-risks"></div>
+
+    <div id="o-nsave" class="nsave" style="display:none"></div>
+    <button id="btn-sync-notion" id="btn-sync-notion" data-action="syncNotion" style="display:none;width:100%;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:10px;padding:11px;font-family:var(--mono);font-size:11px;font-weight:500;cursor:pointer;margin-top:6px;">GUARDAR EN NOTION &#8593;</button>
+
+    <div class="disclaimer">&#9888; An&aacute;lisis exclusivamente educativo. No constituye asesoramiento financiero. El trading de opciones implica riesgo de p&eacute;rdida total del capital.</div>
+
+    <!-- DEEP DIVE -->
+    <div id="deepPanel">
+      <div class="deep-hdr">
+        <div class="spinner" id="spinner"></div>
+        <span class="deep-status" id="deep-status">&mdash;</span>
+      </div>
+      <div id="deepContent"></div>
+    </div>
+  </div>
+</div>
+
+<!--  TAB: HISTRICO  -->
+<div id="tab-history" class="wrap">
+  <div class="hist-top">
+    <span class="hist-title">&Uacute;LTIMOS 90 D&Iacute;AS</span>
+    <button class="btn-sm" data-action="loadHistory">&#8635; Actualizar</button>
+  </div>
+  <div class="filter-row">
+    <button class="btn-sm active" id="f-all" data-filter="all">Todos</button>
+    <button class="btn-sm" id="f-report" data-filter="report">Con informe</button>
+    <button class="btn-sm" id="f-operar" data-filter="operar">OPERAR</button>
+    <button class="btn-sm" id="f-revisar" data-filter="revisar">REVISAR</button>
+  </div>
+
+  <div class="compare-bar">
+    <span style="font-size:18px;">&#9878;</span>
+    <div class="compare-bar-txt"><b>Modo comparaci&oacute;n:</b> act&iacute;valo y selecciona 2&ndash;3 an&aacute;lisis para compararlos.</div>
+    <button class="btn-sm" id="btn-compare-mode" data-action="toggleCompareMode">Activar</button>
+  </div>
+
+  <div id="hist-content">
+    <div class="loading-state"><div class="spinner vis" style="margin:0 auto 12px;"></div><div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Cargando desde Notion...</div></div>
+  </div>
+
+  <!-- Report viewer -->
+  <div class="rv" id="report-viewer">
+    <div class="rv-hdr">
+      <span class="rv-title" id="rv-title">&mdash;</span>
+      <button class="rv-close" data-action="closeReportViewer">&times;</button>
+    </div>
+    <div class="rv-body" id="rv-body"></div>
+  </div>
+</div>
+
+<!--  TAB: COMPARAR  -->
+<div id="tab-compare" class="wrap">
+  <div class="slabel" style="margin-top:0">An&aacute;lisis seleccionados para comparar</div>
+  <div id="cmp-selected-list">
+    <div class="empty-state">
+      <div class="empty-icon">&#9878;</div>
+      <div class="empty-t">Sin an&aacute;lisis seleccionados</div>
+      <div class="empty-s">Ve al Hist&oacute;rico, activa el modo comparaci&oacute;n y selecciona 2&ndash;3 an&aacute;lisis.</div>
+    </div>
+  </div>
+  <button class="btn-main" id="btn-do-compare" data-action="doCompare" disabled>COMPARAR CON CLAUDE &#8599;</button>
+  <div class="cmp-result" id="cmp-result" style="display:none">
+    <div class="cmp-result-t">&#9878; An&aacute;lisis comparativo &middot; Claude</div>
+    <div id="cmp-output"></div>
+  </div>
+  <div id="cmp-nsave" class="nsave" style="display:none"></div>
+</div>
+
+<script>
+// -
+// CONFIG ? IDs de las bases de datos en Notion
+// -
+var NOTION_DS_ANALYSIS  = '10c7551b-0efa-469a-b55d-4e160973008c';
+var NOTION_DS_REPORTS   = 'a186414e-e542-41f2-867a-dc8d96af52fa';
+
+// -
+// STATE
+// -
+var strat        = null;
+var reportMode   = 0;   // 0=none, 1=standard, 2=extended
+var saved        = {};
+var historyData  = [];
+var histFilter   = 'all';
+var compareMode  = false;
+var compareList  = [];  // array de objetos {id, label, strat, score, verdict, ticker, data}
+var currentTab   = 'analyzer';
+
+// -
+// HELPERS
+// -
+function g(id) { return document.getElementById(id); }
+function fv(id) { return g(id) ? g(id).value : ''; }
+function fmt(v) { return Math.round(v).toLocaleString('en-US'); }
+function irow(k, v) { return '<div class="irow"><span class="ik">'+k+'</span><span class="iv">'+v+'</span></div>'; }
+function critRow(label, status, detail) {
+  var bc = status==='ok'?'b-ok':status==='warn'?'b-warn':'b-bad';
+  var bt = status==='ok'?'\u2713 OK':status==='warn'?'\u26A0 REVISAR':'\u2717 ALERTA';
+  return '<div class="crit"><span class="cl">'+label+(detail?' <span class="cd">('+detail+')</span>':'')+'</span><span class="cbadge '+bc+'">'+bt+'</span></div>';
+}
+function sugItem(icon, html) {
+  return '<div class="sug"><span class="sug-icon">'+icon+'</span><span class="sug-txt">'+html+'</span></div>';
+}
+function renderMd(t) {
+  return t
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/^- (.+)$/gm,'<li>$1</li>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/\n/g,'<br>');
+}
+
+// -
+// NAVIGATION
+// -
+function showTab(tab) {
+  ['analyzer','history','compare'].forEach(function(t) {
+    g('tab-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(function(el, i) {
+    el.classList.toggle('active', ['analyzer','history','compare'][i]===tab);
+  });
+  currentTab = tab;
+  if (tab==='history') loadHistory();
+  if (tab==='compare') renderCompareTab();
+}
+
+// -
+// STRATEGY SELECTOR
+// -
+function sel(s) {
+  ['lc','lp','sc','sp'].forEach(function(x) {
+    g('s-'+x).className='sb';
+    g('p-'+x).className='ppill pf-'+x;
+  });
+  g('s-'+s).className='sb sel-'+s;
+  g('p-'+s).className='ppill pf-'+s+' vis';
+  strat=s;
+}
+
+// -
+// REPORT MODE SELECTOR
+// -
+function setReport(n) {
+  reportMode=n;
+  [0,1,2].forEach(function(i) {
+    var el=g('rc-'+i);
+    el.classList.toggle('on', i===n);
+    el.textContent = i===n ? '\u2713' : '';
+  });
+}
+setReport(0);
+
+// -
+// SVG ARC
+// -
+function setArc(pct, color) {
+  var arc=g('score-arc');
+  var C=163.4;
+  arc.setAttribute('stroke-dashoffset', (C - C*pct/100).toFixed(1));
+  arc.setAttribute('stroke', color);
+}
+
+// -
+// MAIN ANALYZE
+// -
+function analyze() {
+  if (!strat) { alert('Selecciona primero el tipo de operaci\u00F3n.'); return; }
+  var ticker    = (fv('f-ticker')||'N/A').toUpperCase();
+  var spot      = parseFloat(fv('f-spot'));
+  var iv        = parseFloat(fv('f-iv'))||50;
+  var strike    = parseFloat(fv('f-strike'));
+  var dte       = parseInt(fv('f-dte'));
+  var premium   = parseFloat(fv('f-premium'));
+  var contracts = parseInt(fv('f-contracts'))||1;
+  var capital   = parseFloat(fv('f-capital'))||0;
+  var userDelta = parseFloat(fv('f-delta'));
+  var trend     = fv('f-trend');
+  var catalyst  = fv('f-catalyst');
+  var thesis    = fv('f-thesis')||'Sin tesis especificada';
+
+  if (!spot||!strike||!dte||!premium) { alert('Completa: precio actual, strike, vencimiento y prima.'); return; }
+
+  var isLong = strat==='lc'||strat==='lp';
+  var isCall = strat==='lc'||strat==='sc';
+  var isPut  = !isCall;
+
+  var totalPremium = premium*contracts*100;
+  var maxProfit, maxLoss, breakeven, rrRatio;
+  if (isLong) {
+    maxLoss=totalPremium;
+    breakeven=isCall?strike+premium:strike-premium;
+    var tgt=isCall?spot*1.25:spot*0.78;
+    maxProfit=isCall?Math.max(0,(tgt-strike-premium)*contracts*100):Math.max(0,(strike-tgt-premium)*contracts*100);
+    rrRatio=maxProfit/maxLoss;
+  } else {
+    maxProfit=totalPremium; breakeven=isCall?strike+premium:strike-premium;
+    maxLoss=isCall?null:(strike-premium)*contracts*100; rrRatio=null;
+  }
+
+  var moneyPct=Math.abs(strike/spot-1);
+  var isOTM=isCall?(strike>spot):(strike<spot);
+  var deltaIsReal=!isNaN(userDelta)&&userDelta!==0;
+  var absDelta,deltaSource;
+  if (deltaIsReal) { absDelta=Math.abs(userDelta); deltaSource='real IBKR'; }
+  else { absDelta=isOTM?Math.max(0.05,0.50-moneyPct*2.2):Math.min(0.85,0.50+moneyPct*1.8); deltaSource='estimado'; }
+  var signedDelta=isCall?absDelta:-absDelta;
+  if (!isLong) signedDelta=-signedDelta;
+
+  var thetaDay=isLong?-(premium*0.015*contracts*100):(premium*0.015*contracts*100);
+  var capitalRiesgo=isPut?(strike-premium)*contracts*100:strike*contracts*100;
+  var directYield=maxProfit/capitalRiesgo;
+  var annYield=isLong?null:(directYield*(365/dte)*100);
+  var effectiveMargin=capitalRiesgo;
+
+  var expDate=new Date(Date.now()+dte*86400000);
+  var expStr=expDate.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+  var ibkrOpen=isLong?'BUY TO OPEN':'SELL TO OPEN';
+  var ibkrClose=isLong?'SELL TO CLOSE':'BUY TO CLOSE';
+  var lmt=isLong?'$'+(premium*1.02).toFixed(2)+' LMT':'$'+(premium*0.98).toFixed(2)+' LMT m\u00EDn.';
+  var catLbl={earnings:'Earnings pr\u00F3ximos',technical:'Rebote t\u00E9cnico',data:'Dato macro',regulatory:'Evento regulatorio',none:'Sin catalizador'}[catalyst];
+  var trendLbl={bullish:'Alcista',neutral:'Neutral',bearish:'Bajista'}[trend];
+  var stratName={lc:'Long Call',lp:'Long Put',sc:'Short Call',sp:'Short Put'}[strat];
+
+  // SCORE
+  var criteriaHtml='', score=0, total=0;
+  function crit(label, st, detail) { total++; score+=(st==='ok'?1:st==='warn'?0.5:0); criteriaHtml+=critRow(label,st,detail); }
+  var dSt=absDelta>=0.22&&absDelta<=0.42?'ok':absDelta>=0.14?'warn':'bad';
+  crit('Delta',dSt,signedDelta.toFixed(2)+' ('+deltaSource+')');
+  var dteSt=isLong?(dte>=30&&dte<=90?'ok':dte>=20?'warn':'bad'):(dte>=20&&dte<=60?'ok':dte<20?'bad':'warn');
+  crit('DTE',dteSt,dte+' d\u00EDas'+(isLong&&dte<30?' \u2014 poco para long':!isLong&&dte>60?' \u2014 theta lento':''));
+  var ivSt=isLong?(iv<40?'ok':iv<65?'warn':'bad'):(iv>50?'ok':iv>30?'warn':'bad');
+  crit('IV impl\u00EDcita',ivSt,iv+'%');
+  var rrSt=isLong?(rrRatio>=2?'ok':rrRatio>=1.5?'warn':'bad'):(annYield>=15?'ok':annYield>=8?'warn':'bad');
+  crit('Rentabilidad',rrSt,isLong?rrRatio.toFixed(1)+'x R/R':annYield.toFixed(1)+'% ARORC');
+  var mSt=isOTM&&moneyPct<=0.15?'ok':isOTM&&moneyPct<=0.25?'warn':'bad'; if(!isOTM) mSt='warn';
+  crit('Moneyness',mSt,(isOTM?'OTM ':'ITM ')+(moneyPct*100).toFixed(1)+'%');
+  var macroOk=(isCall&&trend==='bullish')||(isPut&&trend==='bearish')||(trend==='neutral');
+  crit('Alineaci\u00F3n macro',macroOk?'ok':'warn',trendLbl+' vs. '+(isCall?'alcista':'bajista'));
+  var pctCart=capital?(totalPremium/capital*100):null;
+  var cartSt=pctCart===null?'warn':pctCart<=1?'ok':pctCart<=2?'warn':'bad';
+  crit('Peso cartera',cartSt,pctCart===null?'Capital no indicado':pctCart.toFixed(2)+'% del total');
+
+  var scorePct=Math.round(score/total*100);
+  var scoreColor=scorePct>=70?'#3ddc84':scorePct>=45?'#ffb830':'#ff5252';
+  setArc(scorePct, scoreColor);
+  g('score-num').textContent=scorePct; g('score-num').style.color=scoreColor;
+  g('o-criteria').innerHTML=criteriaHtml;
+
+  // SUGERENCIAS
+  var sugs=[];
+  if(!isLong&&absDelta<0.20) sugs.push(sugItem('\uD83C\uDFAF','<b>Strike muy alejado (delta '+signedDelta.toFixed(2)+'):</b> Para short put/call busca deltas ~0.20\u20130.30 para equilibrar prima y riesgo de asignaci\u00F3n.'));
+  if(isLong&&absDelta<0.22) sugs.push(sugItem('\uD83C\uDFAF','<b>Delta bajo para long ('+absDelta.toFixed(2)+'):</b> Necesitas un movimiento grande para rentabilizar. Considera un strike m\u00E1s cercano.'));
+  if(isLong&&iv>65) sugs.push(sugItem('\uD83D\uDCC9','<b>IV elevada ('+iv+'%):</b> Est\u00E1s pagando la opci\u00F3n cara. Espera compresi\u00F3n post-evento o reduce tama\u00F1o.'));
+  if(!isLong&&iv<35) sugs.push(sugItem('\uD83D\uDCC9','<b>IV baja ('+iv+'%):</b> Prima cobrada escasa. Espera un pico de volatilidad para vender con mejor prima.'));
+  if(isLong&&dte<25) sugs.push(sugItem('\u23F0','<b>Ventana corta ('+dte+' DTE):</b> Theta decay exponencial. Sin catalizador inmediato considera extenderte a 45\u201360 DTE.'));
+  if(!isLong&&dte>60) sugs.push(sugItem('\u23F0','<b>DTE largo para short ('+dte+' DTE):</b> El theta \u00F3ptimo para vender est\u00E1 en 30\u201345 DTE.'));
+  if(catalyst==='earnings'&&isLong) sugs.push(sugItem('\uD83D\uDCCA','<b>Earnings pr\u00F3ximos:</b> Entra antes de que la IV se dispare. Planifica salida justo despu\u00E9s del evento para evitar IV crush.'));
+  if(catalyst==='earnings'&&!isLong) sugs.push(sugItem('\uD83D\uDCCA','<b>Earnings + short = riesgo de gap:</b> Considera bull put spread / bear call spread para limitar p\u00E9rdida m\u00E1xima.'));
+  if(strat==='sp') sugs.push(sugItem('\uD83D\uDCB0','<b>Asignaci\u00F3n potencial:</b> Si '+ticker+' cae bajo $'+strike+', recibir\u00E1s '+fmt(contracts*100)+' acciones por $'+fmt(contracts*100*strike)+'. \u00BFTienes convicci\u00F3n?'));
+  if(strat==='sc') sugs.push(sugItem('\uD83D\uDEE1\uFE0F','<b>Alternativa m\u00E1s segura:</b> Short Call naked tiene riesgo ilimitado. Considera Covered Call o Bear Call Spread.'));
+  if(pctCart&&pctCart>2) sugs.push(sugItem('\u2696\uFE0F','<b>Posici\u00F3n sobredimensionada ('+pctCart.toFixed(1)+'%):</b> Superas el 2% recomendado. Reduce contratos.'));
+  if(!isLong&&annYield&&annYield>40) sugs.push(sugItem('\uD83D\uDEA9','<b>ARORC alto ('+annYield.toFixed(0)+'%):</b> F\u00F3rmula: Prima/(Strike\u2212Prima)\u00D7(365/DTE). Capital en riesgo: $'+fmt(capitalRiesgo)+'. Yield alto suele indicar riesgo elevado en el subyacente.'));
+  if(sugs.length===0) sugs.push(sugItem('\u2705','<b>Setup dentro de par\u00E1metros:</b> No se detectan alertas cr\u00EDticas.'));
+  g('o-sugs').innerHTML=sugs.join('');
+
+  // VEREDICTO
+  var vb=g('o-verdict'), vt=g('o-vtext'), vs=g('o-vsub'), vi=g('o-vicon');
+  if(scorePct>=70){vb.className='verdict go';vt.textContent='OPERAR';vs.textContent='Setup s\u00F3lido \u2014 '+scorePct+'/100';vi.textContent='\u2705';}
+  else if(scorePct>=45){vb.className='verdict wait';vt.textContent='REVISAR';vs.textContent='Setup con observaciones \u2014 '+scorePct+'/100';vi.textContent='\u26A0\uFE0F';}
+  else{vb.className='verdict no';vt.textContent='EVITAR';vs.textContent='Setup con problemas \u2014 '+scorePct+'/100';vi.textContent='\uD83D\uDEAB';}
+
+  var ab=g('o-alert');
+  if(strat==='sc') ab.innerHTML='<div class="alert alert-d">\u26A0 Short Call naked: riesgo ilimitado. IBKR exige nivel avanzado y margen elevado.</div>';
+  else if(strat==='sp') ab.innerHTML='<div class="alert alert-w">\u26A0 Short Put: asignaci\u00F3n potencial de '+fmt(contracts*100)+' acc \u00D7 $'+strike+' = $'+fmt(contracts*100*strike)+'.</div>';
+  else ab.innerHTML='';
+
+  g('o-cost').textContent=isLong?'$'+fmt(totalPremium):'Capital req.';
+  g('o-profit').textContent='$'+fmt(maxProfit);
+  g('o-loss').textContent=maxLoss===null?'\u221E !!!':'-$'+fmt(maxLoss);
+  g('o-rr').textContent=isLong?rrRatio.toFixed(1)+'x':(annYield?annYield.toFixed(1)+'%':'\u2014');
+
+  var dOk=absDelta>=0.22&&absDelta<=0.42;
+  g('o-trade').innerHTML=
+    irow('Acci\u00F3n','<span class="cpill">'+ibkrOpen+'</span> \u00B7 '+contracts+' ctto'+(contracts>1?'s':'')+' \u00B7 '+lmt)+
+    irow('Instrumento','<span class="cpill">'+ticker+' '+(isCall?'CALL':'PUT')+' $'+strike+'</span> exp '+expStr)+
+    irow('Breakeven','<b>$'+breakeven.toFixed(2)+'</b> en vencimiento')+
+    irow('Cerrar','<span class="cpill">'+ibkrClose+'</span>')+
+    irow('Catalizador',catLbl+' \u00B7 '+trendLbl)+
+    irow('Tesis',thesis);
+
+  g('o-greeks').innerHTML=
+    irow('Delta','<span class="'+(dOk?'ok':'warn')+'">'+signedDelta.toFixed(2)+'</span> '+(dOk?'\u2713 rango objetivo':'\u26A0 ajusta el strike')+' <span style="color:var(--muted);font-size:10px;">('+deltaSource+')</span>')+
+    irow('Theta',(thetaDay>=0?'+':'')+'$'+Math.abs(thetaDay).toFixed(1)+'/d\u00EDa \u00B7 '+(isLong?'<span class="bad">en tu contra</span>':'<span class="ok">trabaja para ti</span>'))+
+    irow('Vega',!isLong?(iv>65?'<span class="ok">IV alta \u2014 vendes caro \u2713</span>':'<span class="warn">IV baja \u2014 prima escasa</span>'):(iv>65?'<span class="warn">IV alta \u2014 compras caro</span>':'<span class="ok">IV razonable \u2713</span>'))+
+    irow('DTE',dte+' d\u00EDas \u00B7 '+(dte<25&&isLong?'<span class="warn">corto, theta agresivo</span>':dte>90?'<span class="ok">buena ventana \u2713</span>':'<span class="ok">adecuado \u2713</span>'))+
+    (!isLong&&annYield?irow('ARORC','<span class="'+(annYield>=15?'ok':'warn')+'">'+annYield.toFixed(1)+'%</span> sobre capital en riesgo (Strike\u2212Prima)'):'');
+
+  if(capital){
+    var exp=isLong?totalPremium:effectiveMargin;
+    var bpct=exp/capital*100;
+    var bc=bpct<=1?'#3ddc84':bpct<=2?'#ffb830':'#ff5252';
+    g('o-barpct').textContent=bpct.toFixed(2)+'%';
+    g('o-barfill').style.width=Math.min(bpct/5*100,100)+'%';
+    g('o-barfill').style.background=bc;
+  } else { g('o-barpct').textContent='Capital no especificado'; }
+
+  var exitHtml;
+  if(isLong){exitHtml=irow('Take profit',ibkrClose+' al 50\u2013100% de ganancia')+irow('Stop loss',ibkrClose+' si prima \u221250% \u2192 \u2212$'+fmt(maxLoss*0.5))+irow('Roll','DTE < 21 sin beneficio \u2192 roll forward al mes siguiente')+irow('Parciales','Movimiento r\u00E1pido a favor \u2192 cierra parte para asegurar');}
+  else{exitHtml=irow('Take profit',ibkrClose+' al 50% del cr\u00E9dito \u2192 +$'+fmt(maxProfit*0.5))+irow('Stop loss','Prima dobla \u2192 cierra ($'+fmt(maxProfit*2)+')')+irow(isPut?'Asignaci\u00F3n':'Cobertura',isPut?'Prepara $'+fmt(contracts*100*strike)+' para recibir acciones':'Ten subyacente o cierra antes')+irow('Roll defens.','Delta > 0.50 en contra \u2192 roll a strike alejado/posterior');}
+  g('o-exit').innerHTML=exitHtml;
+
+  var risks=[];
+  if(trend==='bearish'&&isCall&&isLong) risks.push('Macro bajista vs. alcista');
+  if(trend==='bullish'&&isPut&&isLong)  risks.push('Macro alcista vs. bajista');
+  if(iv>65&&isLong) risks.push('IV elevada (compra cara)');
+  if(iv<30&&!isLong) risks.push('IV baja (prima escasa)');
+  if(dte<25&&isLong) risks.push('Theta < 25 DTE');
+  if(catalyst==='earnings') risks.push('Gap adverso post-earnings');
+  if(strat==='sc') risks.push('Riesgo ilimitado \u2191');
+  if(strat==='sp') risks.push('Asignaci\u00F3n forzada');
+  if(absDelta<0.20) risks.push('Delta muy bajo');
+  risks.push('Liquidez del contrato'); risks.push('Black swan macro');
+  g('o-risks').innerHTML=risks.map(function(r){return '<span class="rtag">'+r+'</span>';}).join('');
+
+  saved={ticker:ticker,spot:spot,iv:iv,strike:strike,dte:dte,premium:premium,
+    contracts:contracts,capital:capital,trend:trend,catalyst:catalyst,
+    thesis:thesis,strat:strat,stratName:stratName,scorePct:scorePct,
+    annYield:annYield,signedDelta:signedDelta,deltaSource:deltaSource,
+    breakeven:breakeven,isLong:isLong,isCall:isCall,isPut:isPut};
+
+  g('deepPanel').className='';
+  g('deepContent').innerHTML='';
+  g('output').className='vis';
+  g('o-nsave').style.display='none';
+  setTimeout(function(){g('output').scrollIntoView({behavior:'smooth',block:'start'});},80);
+
+  saveAnalysisToNotion(saved, scorePct);
+
+  if(reportMode===1||reportMode===2) {
+    setTimeout(function(){ deepDive(reportMode); }, 500);
+  }
+}
+
+// -
+// SAVE ANALYSIS TO NOTION -> localStorage buffer
+// -
+function saveAnalysisToNotion(d, scorePct) {
+  var nsave=g('o-nsave');
+  nsave.style.display='flex';
+  nsave.className='nsave';
+  var today=new Date().toISOString().slice(0,10);
+  var entry={
+    id:'a-'+Date.now(),
+    ticker:d.ticker, fecha:today,
+    tipoOperacion:d.stratName,
+    spot:d.spot, strike:d.strike, dte:d.dte, prima:d.premium,
+    delta:Math.abs(d.signedDelta||0), iv:d.iv, contratos:d.contracts,
+    puntuacion:scorePct,
+    veredicto:(scorePct>=70?'OPERAR':scorePct>=45?'REVISAR':'EVITAR'),
+    arorc:d.annYield?parseFloat(d.annYield.toFixed(2)):null,
+    tesis:d.thesis,
+    tieneInforme:false, reportText:null, notionSynced:false
+  };
+  saved.localId=entry.id;
+  try {
+    var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
+    all.unshift(entry);
+    localStorage.setItem('opt_hist', JSON.stringify(all.slice(0,200)));
+    nsave.textContent='\u2713 Guardado \u00B7 '+d.ticker+' \u00B7 '+d.stratName;
+    g('btn-sync-notion').style.display='block';
+  } catch(e) {
+    nsave.textContent='\u26A0 No se pudo guardar localmente';
+    nsave.className='nsave error';
+  }
+}
+
+// -
+// DEEP DIVE with real-time price + earnings verification
+// -
+async function deepDive(mode) {
+  var d=saved;
+  if(!d.ticker){alert('Genera primero el an\u00E1lisis.');return;}
+  var btn=g('btn-analyze'), panel=g('deepPanel'), spinner=g('spinner');
+  var status=g('deep-status'), content=g('deepContent');
+  btn.disabled=true; panel.className='vis'; spinner.className='spinner vis';
+  content.innerHTML=''; panel.scrollIntoView({behavior:'smooth',block:'start'});
+
+
+  var now=new Date();
+  var todayISO=now.toISOString().slice(0,10);
+  var todayHuman=now.toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'});
+
+  // STEP 1: Real price
+  status.textContent='Verificando precio de '+d.ticker+'...';
+  var realPrice=null, priceLine='';
+  try {
+    var sr=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:'Exact current stock price of '+d.ticker+' today '+todayISO+'. Reply ONLY JSON: {"price":123.45,"source":"Yahoo Finance","date":"'+todayISO+'"} No other text.'}]
+      })
+    });
+    var sd=await sr.json(); var st='';
+    if(sd.content) sd.content.forEach(function(b){if(b.type==='text') st+=b.text;});
+    var jm=st.match(/\{[^}]+\}/);
+    if(jm){var p=JSON.parse(jm[0]);if(p.price&&!isNaN(p.price)) realPrice=parseFloat(p.price);}
+  } catch(e){}
+  var usePrice=realPrice||d.spot;
+  if(realPrice){
+    var diff=Math.abs(realPrice-d.spot)/d.spot*100;
+    priceLine='PRECIO VERIFICADO HOY ('+todayISO+'): $'+realPrice+(diff>5?' \u26A0 DIFERENCIA CON PRECIO INTRODUCIDO ($'+d.spot+'): '+diff.toFixed(1)+'% - USA $'+realPrice+' COMO REFERENCIA':' (consistente con $'+d.spot+' introducido)');
+  } else {
+    priceLine='Precio introducido: $'+d.spot+' (verificaci\u00F3n no disponible)';
+  }
+
+  // STEP 2: Earnings dates
+  status.textContent='Buscando earnings de '+d.ticker+'...';
+  var earningsLine='Earnings: informaci\u00F3n no disponible.';
+  try {
+    var er=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:'Last and next earnings report dates for '+d.ticker+'. Today is '+todayISO+'. Reply ONLY JSON: {"last_earnings":"2025-02-14","last_eps_actual":1.23,"last_eps_estimate":1.10,"last_surprise_pct":11.8,"next_earnings":"2025-05-14","next_confirmed":true} Use null for unknowns. No other text.'}]
+      })
+    });
+    var ed=await er.json(); var et='';
+    if(ed.content) ed.content.forEach(function(b){if(b.type==='text') et+=b.text;});
+    var em=et.match(/\{[^{}]+\}/);
+    if(em){
+      var ep=JSON.parse(em[0]);
+      var lastDate=ep.last_earnings||'desconocido';
+      var nextDate=ep.next_earnings||'desconocido';
+      var confirmed=ep.next_confirmed?'confirmado':'estimado';
+      var surprise=(ep.last_surprise_pct!=null)?' (sorpresa: '+(ep.last_surprise_pct>0?'+':'')+parseFloat(ep.last_surprise_pct).toFixed(1)+'%)':'';
+      var daysLeft=9999;
+      if(ep.next_earnings){
+        daysLeft=Math.round((new Date(ep.next_earnings)-new Date(todayISO))/86400000);
+      }
+      var inWindow=(daysLeft>0&&daysLeft<=d.dte);
+      var warningTag=inWindow?' [DENTRO DEL VENCIMIENTO - IMPACTO ALTO]':'';
+      earningsLine='Ultimos earnings: '+lastDate+surprise+' | EPS real: '+(ep.last_eps_actual||'N/A')+' vs estimado: '+(ep.last_eps_estimate||'N/A')
+        +'\nProximos earnings: '+nextDate+' ('+confirmed+') - '+daysLeft+' dias desde hoy'+warningTag;
+      if(inWindow) earningsLine='\u26A0 EARNINGS DENTRO DEL VENCIMIENTO: los proximos earnings ('+nextDate+', '+confirmed+') caen en '+daysLeft+' dias, DENTRO de los '+d.dte+' DTE. Impacto directo en IV y precio de la opcion.\n'+earningsLine;
+    }
+  } catch(e){ earningsLine='Earnings: busqueda no disponible.'; }
+
+  var priceHtml='<div class="price-note">'+priceLine+'</div>';
+  var earningsHtml='<div class="price-note" style="color:var(--blue);background:rgba(79,195,247,.06);border-color:rgba(79,195,247,.3);">'+earningsLine.replace(/\n/g,'<br>')+'</div>';
+  content.innerHTML=priceHtml+earningsHtml;
+
+  var isExtended=(mode===2);
+  status.textContent='Generando informe de '+d.ticker+'...';
+
+  var prompt='Eres un Senior Investment Partner con 20 anos de experiencia en equity research y trading de opciones.\n'
+    +'Fecha de hoy: '+todayHuman+' ('+todayISO+').\n\n'
+    +'=== DATOS VERIFICADOS EN TIEMPO REAL ===\n'
+    +priceLine+'\n'
+    +earningsLine+'\n'
+    +'=========================================\n\n'
+    +'Realiza el analisis institucional completo en espanol para '+d.ticker+'.\n'
+    +'Operacion evaluada: '+d.stratName+' - Strike $'+d.strike+' - '+d.dte+' DTE - Prima $'+d.premium+'.\n'
+    +'Tesis del inversor: '+d.thesis+'.\n\n'
+    +'IMPORTANTE: Usa $'+usePrice+' como precio de referencia para toda la valoracion.\n'
+    +(isExtended?'Nivel EXTENDIDO: maxima profundidad. Al menos 300 palabras por seccion clave.\n':'Nivel ESTANDAR: riguroso y directo.\n')
+    +'\n## 1. DESCRIPCION DEL NEGOCIO\n'
+    +'## 2. FOSO COMPETITIVO\n'
+    +'## 3. EQUIPO DIRECTIVO\n'
+    +'## 4. ESTRATEGIA Y CATALIZADORES\n'
+    +'## 5. RIESGOS PRINCIPALES\n'
+    +'## 6. FACTORES IDIOSINCRATICOS\n'
+    +'## 7. SITUACION FINANCIERA\n'
+    +'## 8. VALORACION\n'
+    +'Usa $'+usePrice+' como precio actual. Calcula el potencial upside/downside desde ese nivel.\n'
+    +'## 9. EARNINGS Y CATALIZADORES TEMPORALES\n'
+    +'Analiza en detalle: '+earningsLine+'\n'
+    +'Caen dentro del vencimiento de la opcion ('+d.dte+' DTE)? Como afecta a la IV y al valor de la opcion? Que espera el mercado?\n'
+    +'## 10. STRESS TESTS (bajista / base / alcista)\n'
+    +'## 11. VEREDICTO FINAL - '+d.stratName.toUpperCase()+' $'+d.strike+'\n'
+    +'EJECUTAR / ESPERAR / DESCARTAR con justificacion detallada. Es adecuado el strike $'+d.strike+' a $'+usePrice+' spot? Y la prima $'+d.premium+'? Sugiere ajustes si procede.';
+
+  try {
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:8000,stream:true,
+        messages:[{role:'user',content:prompt}]})
+    });
+    if(!resp.ok){
+      var errData=await resp.json().catch(function(){return {};});
+      throw new Error(errData.error?errData.error.message:'HTTP '+resp.status);
+    }
+    var reader=resp.body.getReader(), decoder=new TextDecoder(), fullText='';
+    while(true){
+      var res=await reader.read(); if(res.done) break;
+      var lines=decoder.decode(res.value,{stream:true}).split('\n');
+      for(var i=0;i<lines.length;i++){
+        var line=lines[i].trim();
+        if(!line.startsWith('data: ')) continue;
+        var dta=line.slice(6); if(dta==='[DONE]') break;
+        try{
+          var evt=JSON.parse(dta);
+          if(evt.type==='content_block_delta'&&evt.delta&&evt.delta.text){
+            fullText+=evt.delta.text;
+            content.innerHTML=priceHtml+earningsHtml+renderMd(fullText);
+          }
+        }catch(e){}
+      }
+    }
+    spinner.className='spinner';
+    status.textContent='\u2713 Informe completo \u00B7 '+d.ticker;
+    btn.disabled=false;
+    saveReportToNotion(d, fullText, mode, realPrice, todayISO);
+  } catch(err) {
+    spinner.className='spinner';
+    status.textContent='Error';
+    content.innerHTML+='<p style="color:var(--red);">\u26A0 '+err.message+'</p>';
+    btn.disabled=false;
+  }
+}
+
+// -
+// SAVE REPORT -> localStorage
+// -
+function saveReportToNotion(d, fullText, mode, realPrice, todayISO) {
+  var verdictMatch=fullText.match(/EJECUTAR|ESPERAR|DESCARTAR/);
+  var verdictFinal=verdictMatch?verdictMatch[0]:'ESPERAR';
+  try {
+    var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
+    var idx=all.findIndex(function(e){return e.id===saved.localId;});
+    if(idx>=0){
+      all[idx].tieneInforme=true;
+      all[idx].reportText=fullText;
+      all[idx].verdictFinal=verdictFinal;
+      all[idx].realPrice=realPrice;
+    } else {
+      var entry={
+        id:'r-'+Date.now(), ticker:d.ticker, fecha:todayISO,
+        tipoOperacion:d.stratName, strike:d.strike, dte:d.dte,
+        tieneInforme:true, reportText:fullText,
+        verdictFinal:verdictFinal, realPrice:realPrice, notionSynced:false
+      };
+      all.unshift(entry);
+      saved.localId=entry.id;
+    }
+    localStorage.setItem('opt_hist', JSON.stringify(all.slice(0,200)));
+    var nsave=g('o-nsave');
+    nsave.className='nsave';
+    nsave.textContent='\u2713 An\u00E1lisis + informe guardados \u00B7 '+d.ticker;
+    g('btn-sync-notion').style.display='block';
+  } catch(e) { console.error('saveReport error:', e); }
+}
+
+// -
+// LOAD HISTORY from localStorage
+// -
+async function loadHistory() {
+  var hc=g('hist-content');
+  hc.innerHTML='<div class="loading-state"><div class="spinner vis" style="margin:0 auto 12px;"></div><div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Cargando...</div></div>';
+  var cutoff=new Date(); cutoff.setDate(cutoff.getDate()-90);
+  var cutoffISO=cutoff.toISOString().slice(0,10);
+
+  // Try Notion via Claude API
+  try {
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:3000,
+        mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}],
+        messages:[{role:'user',content:
+          'Search Notion data source "collection://'+NOTION_DS_ANALYSIS+'" for all entries with Fecha after '+cutoffISO+'. Return ONLY a JSON array with objects having these fields: id,ticker,fecha,tipoOperacion,spot,strike,dte,prima,delta,iv,contratos,puntuacion,veredicto,arorc,tesis,tieneInforme,informeUrl. Sort by fecha descending. Return [] if none. No markdown.'
+        }]
+      })
+    });
+    var data=await resp.json();
+    var txt=''; if(data.content) data.content.forEach(function(b){if(b.type==='text') txt+=b.text;});
+    var jm=txt.match(/\[([\s\S]*)\]/);
+    if(jm){
+      var notionData=JSON.parse(jm[0]);
+      if(notionData.length>0){ historyData=notionData; renderHistory(); return; }
+    }
+  } catch(e){ /* fallback */ }
+
+  // Fallback: localStorage
+  var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
+  historyData=all.filter(function(e){ return e.fecha && new Date(e.fecha)>=cutoff; });
+  renderHistory();
+}
+
+// -
+// RENDER HISTORY
+// -
+function filterHistory(f) {
+  histFilter=f;
+  ['all','report','operar','revisar'].forEach(function(x){ g('f-'+x).classList.toggle('active',x===f); });
+  renderHistory();
+}
+
+function renderHistory() {
+  var hc=g('hist-content');
+  if(!historyData.length){
+    hc.innerHTML='<div class="empty-state"><div class="empty-icon">\uD83D\uDCCB</div><div class="empty-t">Sin an\u00E1lisis en los \u00FAltimos 90 d\u00EDas</div><div class="empty-s">Genera tu primer an\u00E1lisis desde la pesta\u00F1a Analizar.</div></div>';
+    return;
+  }
+
+  var filtered=historyData.filter(function(d){
+    if(histFilter==='report') return d.tieneInforme;
+    if(histFilter==='operar') return d.veredicto==='OPERAR';
+    if(histFilter==='revisar') return d.veredicto==='REVISAR';
+    return true;
+  });
+
+  // Agrupar por ticker
+  var groups={};
+  filtered.forEach(function(d){
+    if(!groups[d.ticker]) groups[d.ticker]=[];
+    groups[d.ticker].push(d);
+  });
+
+  if(!Object.keys(groups).length){
+    hc.innerHTML='<div class="empty-state"><div class="empty-icon">\uD83D\uDD0D</div><div class="empty-t">Sin resultados para este filtro</div></div>';
+    return;
+  }
+
+  var html='';
+  Object.keys(groups).forEach(function(ticker){
+    var items=groups[ticker];
+    var latestSpot=items[0].spot?'$'+parseFloat(items[0].spot).toFixed(2):'';
+    html+='<div class="tgroup">';
+    html+='<div class="tg-hdr">';
+    html+='<span class="tg-ticker">'+ticker+'</span>';
+    if(latestSpot) html+='<span class="tg-price">'+latestSpot+'</span>';
+    html+='<span class="tg-count">'+items.length+' an\u00E1lisis</span>';
+    html+='</div>';
+    items.forEach(function(d,idx){
+      var stratColor={
+        'Long Call':'color:var(--green)','Long Put':'color:var(--red)',
+        'Short Call':'color:var(--amber)','Short Put':'color:var(--blue)'
+      }[d.tipoOperacion]||'';
+      var vclass=d.veredicto==='OPERAR'?'av-op':d.veredicto==='REVISAR'?'av-rev':'av-no';
+      var scoreColor=d.puntuacion>=70?'var(--green)':d.puntuacion>=45?'var(--amber)':'var(--red)';
+      var isSelected=compareList.some(function(c){return c.id===d.id;});
+      var cardClass='acard'+(d.tieneInforme?' has-report':'')+(isSelected?' compare-selected':'');
+      var fechaStr=d.fecha?new Date(d.fecha).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}):'\u2014';
+      var safeIdx='hist-'+idx+'-'+ticker.replace(/[^a-zA-Z0-9]/g,'');
+      // Store data on window to avoid inline JSON issues
+      window['_hd_'+safeIdx]=d;
+
+      html+='<div class="'+cardClass+'" id="card-'+safeIdx+'" onclick="onCardClick(\''+safeIdx+'\')">';
+      html+='<div class="ac-top"><span class="ac-strat" style="'+stratColor+'">'+d.tipoOperacion+'</span><span class="ac-date">'+fechaStr+'</span></div>';
+      html+='<div class="ac-params">';
+      if(d.strike) html+='<span class="pparam">Strike $'+d.strike+'</span>';
+      if(d.dte)    html+='<span class="pparam">'+d.dte+' DTE</span>';
+      if(d.prima)  html+='<span class="pparam">Prima $'+parseFloat(d.prima).toFixed(2)+'</span>';
+      if(d.iv)     html+='<span class="pparam">IV '+d.iv+'%</span>';
+      if(d.delta)  html+='<span class="pparam">\u0394 '+parseFloat(d.delta).toFixed(3)+'</span>';
+      html+='</div>';
+      html+='<div class="ac-bot">';
+      html+='<span class="ac-score" style="color:'+scoreColor+';">'+(d.puntuacion||'\u2014')+'/100</span>';
+      html+='<span class="ac-verdict '+vclass+'">'+d.veredicto+'</span>';
+      if(d.tieneInforme) html+='<span class="rep-badge">\uD83D\uDCC4 Informe</span>';
+      html+='</div>';
+
+      // Panel expandido
+      html+='<div class="acard-expanded" id="exp-'+safeIdx+'">';
+      if(d.tesis) html+='<div class="exp-sec-t">Tesis</div><div class="exp-sec-txt">'+d.tesis+'</div>';
+      if(d.arorc) html+='<div class="exp-sec-t">ARORC</div><div class="exp-sec-txt"><b>'+parseFloat(d.arorc).toFixed(1)+'%</b> anualizado sobre capital en riesgo</div>';
+      if(d.tieneInforme) html+='<button class="btn-out" style="font-size:10px;padding:8px;" onclick="loadReport(\''+d.id+'\', \''+ticker+' \u00b7 '+d.tipoOperacion+' $'+d.strike+'\', event)">VER INFORME COMPLETO \u2192</button>';
+      html+='</div>';
+      html+='</div>';
+    });
+    html+='</div>';
+  });
+  hc.innerHTML=html;
+}
+
+function onCardClick(safeIdx) {
+  var d = window['_hd_'+safeIdx];
+  var card = g('card-'+safeIdx);
+  if (compareMode) {
+    toggleCompareCard(card, d);
+  } else {
+    var expanded = g('exp-'+safeIdx);
+    if (expanded) expanded.classList.toggle('vis');
+  }
+}
+
+function toggleCardExpand(card) {
+  if(compareMode) return;
+  var expanded=card.querySelector('.acard-expanded');
+  if(expanded) expanded.classList.toggle('vis');
+}
+
+// -
+// LOAD & SHOW REPORT
+// -
+async function loadReport(entryId, title, event) {
+  event.stopPropagation();
+  var rv=g('report-viewer'), rvTitle=g('rv-title'), rvBody=g('rv-body');
+  rvTitle.textContent=title;
+  rv.className='rv vis';
+  rv.scrollIntoView({behavior:'smooth',block:'start'});
+  rvBody.innerHTML='<div class="loading-state"><div class="spinner vis" style="margin:0 auto 10px;"></div></div>';
+
+  // Check localStorage first
+  var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
+  var entry=all.find(function(e){return e.id===entryId;});
+  if(entry&&entry.reportText){
+    rvBody.innerHTML='<div style="font-size:12px;line-height:1.85;color:var(--text);">'+renderMd(entry.reportText)+'</div>';
+    return;
+  }
+
+  // Try fetching from Notion via informeUrl
+  if(entry&&entry.informeUrl){
+    try{
+      var resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:4000,
+          mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}],
+          messages:[{role:'user',content:'Fetch Notion page: "'+entry.informeUrl+'". Return ONLY the page content as plain markdown text, no explanation.'}]
+        })
+      });
+      var data=await resp.json(); var txt='';
+      if(data.content) data.content.forEach(function(b){if(b.type==='text') txt+=b.text;});
+      rvBody.innerHTML='<div style="font-size:12px;line-height:1.85;color:var(--text);">'+renderMd(txt)+'</div>';
+      return;
+    }catch(e){}
+  }
+
+  rvBody.innerHTML='<p style="color:var(--muted);font-size:12px;padding:20px;text-align:center;">Informe no disponible. Genera el informe desde la pesta\u00F1a Analizar.</p>';
+}
+
+function closeReportViewer() {
+  g('report-viewer').className='rv';
+}
+
+// -
+// COMPARE MODE
+// -
+function toggleCompareMode() {
+  compareMode=!compareMode;
+  var btn=g('btn-compare-mode');
+  btn.textContent=compareMode?'Desactivar':'Activar';
+  btn.classList.toggle('active',compareMode);
+  if(!compareMode){ compareList=[]; renderHistory(); }
+}
+
+function toggleCompareCard(card, d) {
+  var idx=compareList.findIndex(function(c){return c.id===d.id;});
+  if(idx>-1){
+    compareList.splice(idx,1);
+    card.classList.remove('compare-selected');
+  } else {
+    if(compareList.length>=3){alert('M\u00E1ximo 3 an\u00E1lisis para comparar.');return;}
+    compareList.push(d);
+    card.classList.add('compare-selected');
+  }
+}
+
+function renderCompareTab() {
+  var list=g('cmp-selected-list');
+  var btn=g('btn-do-compare');
+  if(!compareList.length){
+    list.innerHTML='<div class="empty-state"><div class="empty-icon">\u2696\uFE0F</div><div class="empty-t">Sin an\u00E1lisis seleccionados</div><div class="empty-s">Ve al Hist\u00F3rico, activa el modo comparaci\u00F3n y selecciona 2\u20133 an\u00E1lisis.</div></div>';
+    btn.disabled=true;
+    return;
+  }
+  var html='';
+  compareList.forEach(function(d){
+    var stratColor={'Long Call':'color:var(--green)','Long Put':'color:var(--red)','Short Call':'color:var(--amber)','Short Put':'color:var(--blue)'}[d.tipoOperacion]||'';
+    var scoreColor=(d.puntuacion||0)>=70?'var(--green)':(d.puntuacion||0)>=45?'var(--amber)':'var(--red)';
+    html+='<div class="sel-card on">';
+    html+='<div class="sel-chk on">\u2713</div>';
+    html+='<div class="sel-info"><div class="sel-strat" style="'+stratColor+'">'+d.ticker+' \u00B7 '+d.tipoOperacion+' $'+d.strike+'</div>';
+    html+='<div class="sel-sub" style="color:'+scoreColor+';">'+(d.puntuacion||'\u2014')+'/100 \u00B7 '+d.veredicto+'</div></div>';
+    html+='</div>';
+  });
+  list.innerHTML=html;
+  btn.disabled=compareList.length<2;
+  g('cmp-result').style.display='none';
+}
+
+async function doCompare() {
+  if(compareList.length<2){alert('Selecciona al menos 2 an\u00E1lisis.');return;}
+  var btn=g('btn-do-compare');
+  var result=g('cmp-result');
+  var output=g('cmp-output');
+  btn.disabled=true;
+  result.style.display='block';
+  output.innerHTML='<div class="loading-state"><div class="spinner vis" style="margin:0 auto 10px;"></div><div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Claude est\u00E1 comparando los an\u00E1lisis...</div></div>';
+
+  var desc=compareList.map(function(d,i){
+    return (i+1)+'. '+d.ticker+' \u00B7 '+d.tipoOperacion+' Strike $'+d.strike+' \u00B7 '+d.dte+' DTE \u00B7 Prima $'+d.prima+' \u00B7 Score '+d.puntuacion+'/100 \u00B7 '+d.veredicto+(d.tesis?' \u00B7 Tesis: '+d.tesis:'');
+  }).join('\n');
+
+  try {
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:2000,
+        messages:[{role:'user',content:
+          'Eres un Senior Investment Partner. Compara estos '+compareList.length+' an\u00E1lisis de opciones y decide cu\u00E1l ejecutar\u00EDas y por qu\u00E9. Si ninguno es recomendable, dilo claramente.\n\n'+desc+'\n\n'+
+          'Estructura tu respuesta en espa\u00F1ol:\n1. GANADOR (o NINGUNO si no hay candidato claro) \u2014 una l\u00EDnea directa\n2. JUSTIFICACI\u00D3N \u2014 por qu\u00E9 ese y no los otros\n3. AN\u00C1LISIS DE CADA OPERACI\u00D3N \u2014 pros y contras de cada una\n4. AJUSTES SUGERIDOS \u2014 si hay mejoras posibles a alg\u00FAn setup\n\nS\u00E9 directo y sin eufemismos.'
+        }]
+      })
+    });
+    var data=await resp.json();
+    var txt='';
+    if(data.content) data.content.forEach(function(b){if(b.type==='text') txt+=b.text;});
+
+    var winnerMatch=txt.match(/GANADOR[^:]*:\s*([^\n]+)/i);
+    var winnerTxt=winnerMatch?winnerMatch[1].trim():'Ver an\u00E1lisis completo';
+
+    output.innerHTML='<div class="winner-box"><div class="winner-lbl">RECOMENDACI\u00D3N DE CLAUDE</div><div class="winner-txt"><b>'+winnerTxt+'</b></div></div><div class="cmp-text">'+renderMd(txt)+'</div>';
+    btn.disabled=false;
+
+    // Guardar comparaci?n en Notion
+    saveCmpToNotion(compareList, txt);
+
+  } catch(e) {
+    output.innerHTML='<p style="color:var(--red);font-size:12px;">\u26A0 '+e.message+'</p>';
+    btn.disabled=false;
+  }
+}
+
+function saveCmpToNotion(list, text) {
+  var nsave=g('cmp-nsave');
+  nsave.style.display='flex'; nsave.className='nsave';
+  var today=new Date().toISOString().slice(0,10);
+  var tickers=list.map(function(d){return d.ticker;}).join(' vs ');
+  var entry={id:'c-'+Date.now(), ticker:tickers, fecha:today,
+    tipoOperacion:'Comparacion', tieneInforme:true,
+    reportText:text, notionSynced:false};
+  try {
+    var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
+    all.unshift(entry);
+    localStorage.setItem('opt_hist', JSON.stringify(all.slice(0,200)));
+    nsave.textContent='\u2713 Comparaci\u00F3n guardada \u00B7 '+tickers;
+  } catch(e) {
+    nsave.className='nsave error';
+    nsave.textContent='\u26A0 Error al guardar';
+  }
+}
+
+// -
+// INIT
+// -
+showTab('analyzer');
+
+
+// - Sync to Notion via Claude API (works on HTTPS/GitHub Pages) -
+async function syncToNotion() {
+  var btn=g('btn-sync-notion'), nsave=g('o-nsave');
+  nsave.style.display='flex'; nsave.className='nsave saving';
+  nsave.textContent='Sincronizando con Notion...';
+  btn.disabled=true;
+
+  var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
+  var pending=all.filter(function(e){return !e.notionSynced;});
+
+  if(!pending.length){
+    nsave.className='nsave'; nsave.textContent='\u2713 Todo ya sincronizado';
+    btn.disabled=false; return;
+  }
+
+  var ok=0, fail=0;
+  for(var i=0;i<pending.length;i++){
+    var e=pending[i];
+    try{
+      var today=e.fecha||new Date().toISOString().slice(0,10);
+      var isReport=e.tieneInforme&&e.reportText;
+      var dsId=isReport?NOTION_DS_REPORTS:NOTION_DS_ANALYSIS;
+      var name=e.ticker+' - '+(e.tipoOperacion||'')+(e.strike?' $'+e.strike:'')+' - '+today;
+
+      var props='Nombre: "'+name+'"\nTicker: "'+e.ticker+'"\ndate:Fecha:start: "'+today+'"\ndate:Fecha:is_datetime: 0\n';
+      if(!isReport){
+        props+='Tipo Operacion: "'+(e.tipoOperacion||'')+'\n';
+        if(e.spot)       props+='Spot: '+e.spot+'\n';
+        if(e.strike)     props+='Strike: '+e.strike+'\n';
+        if(e.dte)        props+='DTE: '+e.dte+'\n';
+        if(e.prima)      props+='Prima: '+e.prima+'\n';
+        if(e.delta)      props+='Delta: '+e.delta+'\n';
+        if(e.iv)         props+='IV: '+e.iv+'\n';
+        if(e.puntuacion) props+='Puntuacion: '+e.puntuacion+'\n';
+        if(e.veredicto)  props+='Veredicto: "'+e.veredicto+'"\n';
+        if(e.arorc)      props+='ARORC: '+e.arorc+'\n';
+        if(e.tesis)      props+='Tesis: "'+e.tesis+'"\n';
+        props+='Tiene Informe: "__NO__"\n';
+      } else {
+        props+='Tipo Informe: "Estandar (10 secciones)"\n';
+        props+='Tipo Operacion: "'+(e.tipoOperacion||'')+'\n';
+        if(e.strike)       props+='Strike: '+e.strike+'\n';
+        if(e.dte)          props+='DTE: '+e.dte+'\n';
+        if(e.verdictFinal) props+='Veredicto Final: "'+e.verdictFinal+'"\n';
+        if(e.realPrice)    props+='Precio Verificado: '+e.realPrice+'\n';
+      }
+
+      var msgContent='Create a page in Notion data source "collection://'+dsId+'" with these properties:\n'
+        +props
+        +(isReport&&e.reportText?'\nPage content:\n'+e.reportText.slice(0,10000):'')
+        +'\nReturn ONLY the created page URL.';
+
+      var resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:300,
+          mcp_servers:[{type:'url',url:'https://mcp.notion.com/mcp',name:'notion'}],
+          messages:[{role:'user',content:msgContent}]
+        })
+      });
+      if(!resp.ok) throw new Error('HTTP '+resp.status);
+      var idx=all.findIndex(function(x){return x.id===e.id;});
+      if(idx>=0) all[idx].notionSynced=true;
+      ok++;
+    } catch(ex){ fail++; console.error('sync error:',ex); }
+  }
+
+  localStorage.setItem('opt_hist',JSON.stringify(all));
+  nsave.className=fail?'nsave error':'nsave';
+  nsave.textContent=fail
+    ?'\u26A0 '+ok+' OK, '+fail+' con error'
+    :'\u2713 '+ok+' elemento'+(ok>1?'s':'')+' guardados en Notion';
+  btn.disabled=false;
+}
+
+function markSynced(ids, nsave, btn) {
+  var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
+  ids.forEach(function(id){
+    var idx=all.findIndex(function(e){return e.id===id;});
+    if(idx>=0) all[idx].notionSynced=true;
+  });
+  localStorage.setItem('opt_hist',JSON.stringify(all));
+  if(nsave){ nsave.className='nsave'; nsave.textContent='\u2713 Sincronizado con Notion'; }
+  if(btn) btn.disabled=false;
+}
+// -- Event delegation (replaces all onclick attributes) --
+document.addEventListener('click', function(e) {
+    var el = e.target.closest('[data-tab],[data-sel],[data-report],[data-action],[data-filter]');
+    if (!el) return;
+    var tab    = el.getAttribute('data-tab');
+    var sel_v  = el.getAttribute('data-sel');
+    var report = el.getAttribute('data-report');
+    var action = el.getAttribute('data-action');
+    var filter = el.getAttribute('data-filter');
+    if (tab)    showTab(tab);
+    if (sel_v)  sel(sel_v);
+    if (report !== null) setReport(parseInt(report));
+    if (filter) filterHistory(filter);
+    if (action === 'analyze')           analyze();
+    if (action === 'loadHistory')       loadHistory();
+    if (action === 'toggleCompareMode') toggleCompareMode();
+    if (action === 'closeReportViewer') closeReportViewer();
+    if (action === 'doCompare')         doCompare();
+    if (action === 'syncNotion')        syncToNotion();
+});
+
+</script>
+</body>
+</html>

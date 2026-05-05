@@ -1376,79 +1376,87 @@ async function loadReport(entryId, title, event) {
     return;
   }
 
-  // 2. Try to fetch from Notion reports database
+  // 2. Fetch from Notion - search by Ticker (most reliable)
   try {
     rvBody.innerHTML='<div class="loading-state"><div class="spinner vis" style="margin:0 auto 10px;"></div><div style="font-size:11px;color:var(--muted);font-family:var(--mono);">Buscando en Notion...</div></div>';
 
-    // Search for report linked to this analysis
-    var notionPageId = entry&&entry.notionPageId ? entry.notionPageId : null;
-    var notionReportId = entry&&entry.notionReportId ? entry.notionReportId : null;
-
-    // If we have a direct report page ID, fetch its blocks
-    if(!notionReportId) {
-      // Query reports DB filtered by Analysis ID
-      var qResp = await fetch(NOTION_API+'/databases/'+NOTION_DS_REPORTS+'/query', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          filter: notionPageId ? {
-            property:'An\u00E1lisis ID',
-            rich_text:{contains:notionPageId}
-          } : {
-            property:'Ticker',
-            rich_text:{contains:entry&&entry.ticker?entry.ticker:''}
-          },
-          page_size:1
-        })
-      });
-      if(qResp.ok) {
-        var qData=await qResp.json();
-        if(qData.results&&qData.results.length>0) {
-          notionReportId=qData.results[0].id;
-        }
-      }
+    var ticker = entry&&entry.ticker ? entry.ticker : '';
+    if(!ticker) {
+      rvBody.innerHTML='<p style="color:var(--muted);font-size:13px;padding:20px;text-align:center;">No se puede identificar el ticker para buscar en Notion.</p>';
+      return;
     }
 
-    if(!notionReportId) {
-      rvBody.innerHTML='<p style="color:var(--muted);font-size:13px;padding:20px;text-align:center;">Informe no encontrado en Notion. Gen\u00E9ralo desde la pesta\u00F1a Analizar.</p>';
+    // Query reports DB by Ticker
+    var qResp = await fetch(NOTION_API+'/databases/'+NOTION_DS_REPORTS+'/query', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        filter:{property:'Ticker', rich_text:{contains:ticker}},
+        sorts:[{property:'Fecha',direction:'descending'}],
+        page_size:5
+      })
+    });
+
+    if(!qResp.ok) throw new Error('Query failed: HTTP '+qResp.status);
+    var qData = await qResp.json();
+    var results = qData.results||[];
+
+    // If multiple results, pick the one closest in date to entry.fecha
+    var reportPage = null;
+    if(results.length===1) {
+      reportPage = results[0];
+    } else if(results.length>1 && entry&&entry.fecha) {
+      // Pick closest date
+      reportPage = results.reduce(function(best, r) {
+        var rDate = r.properties&&r.properties['Fecha']&&r.properties['Fecha'].date ? r.properties['Fecha'].date.start : '';
+        var bDate = best.properties&&best.properties['Fecha']&&best.properties['Fecha'].date ? best.properties['Fecha'].date.start : '';
+        return Math.abs(new Date(rDate)-new Date(entry.fecha)) < Math.abs(new Date(bDate)-new Date(entry.fecha)) ? r : best;
+      });
+    } else if(results.length>0) {
+      reportPage = results[0];
+    }
+
+    if(!reportPage) {
+      rvBody.innerHTML='<p style="color:var(--muted);font-size:13px;padding:20px;text-align:center;">No se encontr\u00F3 informe para '+ticker+' en Notion. Gen\u00E9ralo desde Analizar.</p>';
       return;
     }
 
     // Fetch page blocks
-    var bResp = await fetch(NOTION_API+'/blocks/'+notionReportId+'/children?page_size=100', {
-      headers:{'Content-Type':'application/json'}
-    });
-    if(!bResp.ok) throw new Error('HTTP '+bResp.status);
+    var bResp = await fetch(NOTION_API+'/blocks/'+reportPage.id+'/children?page_size=100');
+    if(!bResp.ok) throw new Error('Blocks failed: HTTP '+bResp.status);
     var bData = await bResp.json();
 
-    // Convert blocks to text
+    // Convert blocks to markdown text
     var text = (bData.results||[]).map(function(block) {
       var type = block.type;
       var getRich = function(arr) { return (arr||[]).map(function(r){return r.plain_text||'';}).join(''); };
-      if(type==='heading_1')  return '# '+getRich(block.heading_1&&block.heading_1.rich_text);
-      if(type==='heading_2')  return '## '+getRich(block.heading_2&&block.heading_2.rich_text);
-      if(type==='heading_3')  return '### '+getRich(block.heading_3&&block.heading_3.rich_text);
-      if(type==='paragraph')  return getRich(block.paragraph&&block.paragraph.rich_text);
+      if(type==='heading_1') return '# '+getRich(block.heading_1&&block.heading_1.rich_text);
+      if(type==='heading_2') return '## '+getRich(block.heading_2&&block.heading_2.rich_text);
+      if(type==='heading_3') return '### '+getRich(block.heading_3&&block.heading_3.rich_text);
+      if(type==='paragraph') return getRich(block.paragraph&&block.paragraph.rich_text);
       if(type==='bulleted_list_item') return '- '+getRich(block.bulleted_list_item&&block.bulleted_list_item.rich_text);
       if(type==='numbered_list_item') return '- '+getRich(block.numbered_list_item&&block.numbered_list_item.rich_text);
       return '';
     }).filter(function(l){return l.trim();}).join('\n');
 
-    // Cache in localStorage
-    if(entry) {
-      var idx=all.findIndex(function(e){return e.id===entryId;});
-      if(idx>=0){
-        all[idx].reportText=text;
-        all[idx].notionReportId=notionReportId;
-        localStorage.setItem('opt_hist',JSON.stringify(all));
-      }
+    if(!text.trim()) {
+      rvBody.innerHTML='<p style="color:var(--muted);font-size:13px;padding:20px;text-align:center;">El informe en Notion est\u00E1 vac\u00EDo. Gen\u00E9ralo de nuevo desde Analizar.</p>';
+      return;
+    }
+
+    // Cache in localStorage for next time
+    var idx=all.findIndex(function(e){return e.id===entryId;});
+    if(idx>=0){
+      all[idx].reportText=text;
+      all[idx].notionReportId=reportPage.id;
+      localStorage.setItem('opt_hist',JSON.stringify(all));
     }
 
     rvBody.innerHTML='<div style="font-size:13px;line-height:1.85;color:var(--text);">'+renderMd(text)+'</div>';
 
   } catch(ex) {
-    console.error('loadReport from Notion error:', ex);
-    rvBody.innerHTML='<p style="color:var(--red);font-size:13px;padding:20px;text-align:center;">\u26A0 Error cargando desde Notion: '+ex.message+'</p>';
+    console.error('loadReport error:', ex);
+    rvBody.innerHTML='<p style="color:var(--red);font-size:13px;padding:20px;text-align:center;">\u26A0 Error: '+ex.message+'</p>';
   }
 }
 

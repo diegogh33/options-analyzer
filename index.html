@@ -921,10 +921,10 @@ function analyze() {
 // -
 // SAVE ANALYSIS TO NOTION -> localStorage buffer
 // -
-function saveAnalysisToNotion(d, scorePct) {
+async function saveAnalysisToNotion(d, scorePct) {
   var nsave=g('o-nsave');
-  nsave.style.display='flex';
-  nsave.className='nsave';
+  nsave.style.display='flex'; nsave.className='nsave saving';
+  nsave.textContent='Guardando...';
   var today=new Date().toISOString().slice(0,10);
   var entry={
     id:'a-'+Date.now(),
@@ -935,19 +935,59 @@ function saveAnalysisToNotion(d, scorePct) {
     puntuacion:scorePct,
     veredicto:(scorePct>=70?'OPERAR':scorePct>=45?'REVISAR':'EVITAR'),
     arorc:d.annYield?parseFloat(d.annYield.toFixed(2)):null,
-    tesis:d.thesis,
-    tieneInforme:false, reportText:null, notionSynced:false
+    tesis:d.thesis, tieneInforme:false, reportText:null, notionSynced:false
   };
   saved.localId=entry.id;
+
+  // Save to localStorage first
+  var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
+  all.unshift(entry);
+  localStorage.setItem('opt_hist', JSON.stringify(all.slice(0,500)));
+
+  // Auto-save to Notion
   try {
-    var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
-    all.unshift(entry);
-    localStorage.setItem('opt_hist', JSON.stringify(all.slice(0,200)));
-    nsave.textContent='\u2713 Guardado \u00B7 '+d.ticker+' \u00B7 '+d.stratName;
+    var name=d.ticker+' - '+d.stratName+' $'+d.strike+' - '+today;
+    var props={
+      'Nombre':{title:[{text:{content:name.slice(0,200)}}]},
+      'Ticker':{rich_text:[{text:{content:String(d.ticker||'')}}]},
+      'Fecha':{date:{start:today}},
+      'Tipo Operaci\u00F3n':{select:{name:d.stratName}},
+      'Spot':{number:parseFloat(d.spot)||0},
+      'Strike':{number:parseFloat(d.strike)||0},
+      'DTE':{number:parseInt(d.dte)||0},
+      'Prima':{number:parseFloat(d.premium)||0},
+      'Delta':{number:Math.abs(parseFloat(d.signedDelta)||0)},
+      'IV':{number:parseFloat(d.iv)||0},
+      'Contratos':{number:parseInt(d.contracts)||1},
+      'Puntuaci\u00F3n':{number:scorePct},
+      'Veredicto':{select:{name:(scorePct>=70?'OPERAR':scorePct>=45?'REVISAR':'EVITAR')}},
+      'Tesis':{rich_text:[{text:{content:String(d.thesis||'').slice(0,2000)}}]},
+      'Tiene Informe':{checkbox:false}
+    };
+    if(d.annYield) props['ARORC']={number:parseFloat(d.annYield.toFixed(2))};
+    var resp=await fetch(NOTION_API+'/pages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({parent:{database_id:NOTION_DS_ANALYSIS},properties:props})
+    });
+    if(resp.ok){
+      var pg=await resp.json();
+      // Store Notion page ID for later report update
+      saved.notionPageId=pg.id;
+      var idx=all.findIndex(function(e){return e.id===entry.id;});
+      if(idx>=0){all[idx].notionSynced=true; all[idx].notionPageId=pg.id;}
+      localStorage.setItem('opt_hist',JSON.stringify(all));
+      nsave.className='nsave';
+      nsave.textContent='\u2713 Guardado en Notion \u00B7 '+d.ticker+' \u00B7 '+d.stratName;
+      g('btn-sync-notion').style.display='none';
+    } else {
+      throw new Error('Notion error '+resp.status);
+    }
+  } catch(ex) {
+    console.error('Auto-save to Notion failed:', ex);
+    nsave.className='nsave';
+    nsave.textContent='\u2713 Guardado localmente \u00B7 Pulsa "Guardar en Notion" para sincronizar';
     g('btn-sync-notion').style.display='block';
-  } catch(e) {
-    nsave.textContent='\u26A0 No se pudo guardar localmente';
-    nsave.className='nsave error';
   }
 }
 
@@ -1115,33 +1155,69 @@ async function deepDive(mode) {
 // -
 // SAVE REPORT -> localStorage
 // -
-function saveReportToNotion(d, fullText, mode, realPrice, todayISO) {
+async function saveReportToNotion(d, fullText, mode, realPrice, todayISO) {
   var verdictMatch=fullText.match(/EJECUTAR|ESPERAR|DESCARTAR/);
   var verdictFinal=verdictMatch?verdictMatch[0]:'ESPERAR';
+
+  // Update localStorage
+  var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
+  var idx=all.findIndex(function(e){return e.id===saved.localId;});
+  if(idx>=0){
+    all[idx].tieneInforme=true;
+    all[idx].reportText=fullText;
+    all[idx].verdictFinal=verdictFinal;
+    all[idx].realPrice=realPrice;
+  }
+  localStorage.setItem('opt_hist',JSON.stringify(all));
+
+  // Auto-save report to Notion
   try {
-    var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
-    var idx=all.findIndex(function(e){return e.id===saved.localId;});
-    if(idx>=0){
-      all[idx].tieneInforme=true;
-      all[idx].reportText=fullText;
-      all[idx].verdictFinal=verdictFinal;
-      all[idx].realPrice=realPrice;
-    } else {
-      var entry={
-        id:'r-'+Date.now(), ticker:d.ticker, fecha:todayISO,
-        tipoOperacion:d.stratName, strike:d.strike, dte:d.dte,
-        tieneInforme:true, reportText:fullText,
-        verdictFinal:verdictFinal, realPrice:realPrice, notionSynced:false
-      };
-      all.unshift(entry);
-      saved.localId=entry.id;
+    var today=todayISO||new Date().toISOString().slice(0,10);
+    var name='Informe \u00B7 '+d.ticker+' \u00B7 '+d.stratName+' $'+d.strike+' \u00B7 '+today;
+    var props={
+      'Nombre':{title:[{text:{content:name.slice(0,200)}}]},
+      'Ticker':{rich_text:[{text:{content:String(d.ticker||'')}}]},
+      'Fecha':{date:{start:today}},
+      'Tipo Informe':{select:{name:mode===2?'Extendido':'Est\u00E1ndar (10 secciones)'}},
+      'Tipo Operaci\u00F3n':{select:{name:d.stratName}},
+      'Strike':{number:parseFloat(d.strike)||0},
+      'DTE':{number:parseInt(d.dte)||0},
+      'Veredicto Final':{select:{name:verdictFinal}}
+    };
+    if(realPrice) props['Precio Verificado']={number:parseFloat(realPrice)};
+    if(saved.notionPageId) props['An\u00E1lisis ID']={rich_text:[{text:{content:saved.notionPageId}}]};
+
+    // Build page blocks from report text
+    var chunks=fullText.slice(0,50000).split('\n').filter(function(l){return l.trim();});
+    var blocks=chunks.slice(0,100).map(function(line){
+      var clean=line.replace(/^#+\s*/,'').replace(/\*\*/g,'').trim();
+      if(line.match(/^## /)) return {object:'block',type:'heading_2',heading_2:{rich_text:[{type:'text',text:{content:clean.slice(0,200)}}]}};
+      if(line.match(/^# /))  return {object:'block',type:'heading_1',heading_1:{rich_text:[{type:'text',text:{content:clean.slice(0,200)}}]}};
+      if(line.match(/^- /))  return {object:'block',type:'bulleted_list_item',bulleted_list_item:{rich_text:[{type:'text',text:{content:clean.slice(0,2000)}}]}};
+      return {object:'block',type:'paragraph',paragraph:{rich_text:[{type:'text',text:{content:clean.slice(0,2000)}}]}};
+    });
+
+    var resp=await fetch(NOTION_API+'/pages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({parent:{database_id:NOTION_DS_REPORTS},properties:props,children:blocks})
+    });
+    if(resp.ok){
+      var pg=await resp.json();
+      // Update analysis entry to mark it has a report
+      if(saved.notionPageId){
+        await fetch(NOTION_API+'/pages/'+saved.notionPageId,{
+          method:'PATCH',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({properties:{'Tiene Informe':{checkbox:true}}})
+        });
+      }
+      var nsave=g('o-nsave');
+      nsave.className='nsave';
+      nsave.textContent='\u2713 An\u00E1lisis + informe guardados en Notion \u00B7 '+d.ticker;
+      g('btn-sync-notion').style.display='none';
     }
-    localStorage.setItem('opt_hist', JSON.stringify(all.slice(0,200)));
-    var nsave=g('o-nsave');
-    nsave.className='nsave';
-    nsave.textContent='\u2713 An\u00E1lisis + informe guardados \u00B7 '+d.ticker;
-    g('btn-sync-notion').style.display='block';
-  } catch(e) { console.error('saveReport error:', e); }
+  } catch(ex){ console.error('Auto-save report failed:', ex); }
 }
 
 // -
@@ -1582,6 +1658,125 @@ async function syncToNotion() {
   btn.disabled=false;
 }
 
+async function loadFromNotion() {
+  var btn=g('btn-load-notion');
+  var hc=g('hist-content');
+  btn.disabled=true;
+  btn.textContent='Cargando...';
+  try {
+    // Query analysis DB
+    var resp=await fetch(NOTION_API+'/databases/'+NOTION_DS_ANALYSIS+'/query',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sorts:[{property:'Fecha',direction:'descending'}],page_size:50})
+    });
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    var data=await resp.json();
+    var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
+    var added=0;
+
+    (data.results||[]).forEach(function(page) {
+      var props=page.properties||{};
+      var getId=function(p){ return p&&p.rich_text&&p.rich_text[0]?p.rich_text[0].plain_text:''; };
+      var getNum=function(p){ return p&&p.number!=null?p.number:null; };
+      var getSel=function(p){ return p&&p.select?p.select.name:''; };
+      var getDate=function(p){ return p&&p.date&&p.date.start?p.date.start:''; };
+      var getTitle=function(p){ return p&&p.title&&p.title[0]?p.title[0].plain_text:''; };
+      var getCb=function(p){ return p&&p.checkbox; };
+
+      var ticker=getId(props['Ticker'])||'';
+      var fecha=getDate(props['Fecha'])||'';
+      if(!ticker||!fecha) return;
+
+      // Check if already in localStorage (by notionPageId)
+      var exists=all.some(function(e){ return e.notionPageId===page.id; });
+      if(exists) return;
+
+      var entry={
+        id:'notion-'+page.id,
+        notionPageId:page.id,
+        ticker:ticker, fecha:fecha,
+        tipoOperacion:getSel(props['Tipo Operaci\u00F3n']),
+        spot:getNum(props['Spot']),
+        strike:getNum(props['Strike']),
+        dte:getNum(props['DTE']),
+        prima:getNum(props['Prima']),
+        delta:getNum(props['Delta']),
+        iv:getNum(props['IV']),
+        contratos:getNum(props['Contratos']),
+        puntuacion:getNum(props['Puntuaci\u00F3n']),
+        veredicto:getSel(props['Veredicto']),
+        arorc:getNum(props['ARORC']),
+        tesis:getId(props['Tesis']),
+        tieneInforme:getCb(props['Tiene Informe'])||false,
+        notionSynced:true
+      };
+      all.push(entry);
+      added++;
+    });
+
+    // Also load reports
+    var respR=await fetch(NOTION_API+'/databases/'+NOTION_DS_REPORTS+'/query',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sorts:[{property:'Fecha',direction:'descending'}],page_size:20})
+    });
+    if(respR.ok){
+      var dataR=await respR.json();
+      (dataR.results||[]).forEach(function(page){
+        var props=page.properties||{};
+        var getSel=function(p){return p&&p.select?p.select.name:'';};
+        var getDate=function(p){return p&&p.date&&p.date.start?p.date.start:'';};
+        var getNum=function(p){return p&&p.number!=null?p.number:null;};
+        var getId=function(p){return p&&p.rich_text&&p.rich_text[0]?p.rich_text[0].plain_text:'';};
+        var getTitle=function(p){return p&&p.title&&p.title[0]?p.title[0].plain_text:'';};
+
+        var ticker=getId(props['Ticker'])||getTitle(props['Nombre'])||'';
+        var fecha=getDate(props['Fecha'])||'';
+        if(!ticker||!fecha) return;
+
+        // Find matching analysis entry and mark it has report
+        var analysisId=getId(props['An\u00E1lisis ID']);
+        var linked=all.find(function(e){return e.notionPageId===analysisId;});
+        if(linked){
+          linked.tieneInforme=true;
+          linked.verdictFinal=getSel(props['Veredicto Final']);
+          linked.notionReportId=page.id;
+        } else {
+          // Standalone report entry
+          var exists=all.some(function(e){return e.notionPageId===page.id;});
+          if(!exists){
+            all.push({
+              id:'notion-r-'+page.id,
+              notionPageId:page.id,
+              ticker:ticker, fecha:fecha,
+              tipoOperacion:getSel(props['Tipo Operaci\u00F3n'])||'Informe',
+              strike:getNum(props['Strike']),
+              dte:getNum(props['DTE']),
+              tieneInforme:true,
+              verdictFinal:getSel(props['Veredicto Final']),
+              notionSynced:true
+            });
+            added++;
+          }
+        }
+      });
+    }
+
+    // Sort by date desc and save
+    all.sort(function(a,b){return (b.fecha||'')>(a.fecha||'')?1:-1;});
+    localStorage.setItem('opt_hist',JSON.stringify(all.slice(0,500)));
+    historyData=all;
+    renderHistory();
+    btn.textContent='\u2713 '+added+' cargados';
+    setTimeout(function(){btn.textContent='\u2193 Cargar desde Notion';btn.disabled=false;},2000);
+  } catch(ex){
+    console.error('loadFromNotion error:',ex);
+    btn.textContent='\u26A0 Error: '+ex.message;
+    btn.disabled=false;
+  }
+}
+
 function deleteAnalysis(entryId, event) {
   event.stopPropagation();
   var all=JSON.parse(localStorage.getItem('opt_hist')||'[]');
@@ -1620,6 +1815,7 @@ document.addEventListener('click', function(e) {
     if (action === 'closeReportViewer') closeReportViewer();
     if (action === 'doCompare')         doCompare();
     if (action === 'syncNotion')        syncToNotion();
+    if (action === 'loadFromNotion')   loadFromNotion();
 });
 
 </script>

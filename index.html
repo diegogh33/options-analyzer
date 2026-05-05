@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzBhMGEwZiIvPgogIDxyZWN0IHg9IjQiIHk9IjIwIiB3aWR0aD0iNCIgaGVpZ2h0PSI4IiByeD0iMSIgZmlsbD0iIzdjNmZmZiIvPgogIDxyZWN0IHg9IjEwIiB5PSIxNCIgd2lkdGg9IjQiIGhlaWdodD0iMTQiIHJ4PSIxIiBmaWxsPSIjN2M2ZmZmIi8+CiAgPHJlY3QgeD0iMTYiIHk9IjkiIHdpZHRoPSI0IiBoZWlnaHQ9IjE5IiByeD0iMSIgZmlsbD0iIzNkZGM4NCIvPgogIDxyZWN0IHg9IjIyIiB5PSI0IiB3aWR0aD0iNCIgaGVpZ2h0PSIyNCIgcng9IjEiIGZpbGw9IiMzZGRjODQiLz4KICA8Y2lyY2xlIGN4PSI0IiBjeT0iMTIiIHI9IjEuNSIgZmlsbD0iI2ZmYjgzMCIvPgogIDxjaXJjbGUgY3g9IjEwIiBjeT0iOCIgcj0iMS41IiBmaWxsPSIjZmZiODMwIi8+CiAgPGNpcmNsZSBjeD0iMTYiIGN5PSI1IiByPSIxLjUiIGZpbGw9IiNmZmI4MzAiLz4KICA8Y2lyY2xlIGN4PSIyMiIgY3k9IjE0IiByPSIxLjUiIGZpbGw9IiNmZjUyNTIiLz4KICA8cG9seWxpbmUgcG9pbnRzPSI0LDEyIDEwLDggMTYsNSAyMiwxNCIgc3Ryb2tlPSIjZmZiODMwIiBzdHJva2Utd2lkdGg9IjEuMiIgZmlsbD0ibm9uZSIgb3BhY2l0eT0iMC42Ii8+Cjwvc3ZnPg==">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -503,6 +504,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
   <div class="hist-top">
     <span class="hist-title">&Uacute;LTIMOS 90 D&Iacute;AS</span>
     <button class="btn-sm" data-action="loadHistory">&#8635; Actualizar</button>
+    <button class="btn-sm" id="btn-load-notion" data-action="loadFromNotion" style="color:var(--accent);border-color:rgba(124,111,255,.5);">&#8595; Cargar desde Notion</button>
   </div>
   <div class="filter-row">
     <button class="btn-sm active" id="f-all" data-filter="all">Todos</button>

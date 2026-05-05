@@ -1421,15 +1421,25 @@ async function loadReport(entryId, title, event) {
       return;
     }
 
-    // Fetch page blocks
-    var bResp = await fetch(NOTION_API+'/blocks/'+reportPage.id+'/children?page_size=100');
-    if(!bResp.ok) throw new Error('Blocks failed: HTTP '+bResp.status);
-    var bData = await bResp.json();
+    // Fetch ALL page blocks with pagination
+    var allBlocks = [];
+    var cursor = null;
+    var maxPages = 10; // safety limit
+    for(var pg=0; pg<maxPages; pg++) {
+      var blockUrl = NOTION_API+'/blocks/'+reportPage.id+'/children?page_size=100';
+      if(cursor) blockUrl += '&start_cursor='+cursor;
+      var bResp = await fetch(blockUrl);
+      if(!bResp.ok) throw new Error('Blocks failed: HTTP '+bResp.status);
+      var bData = await bResp.json();
+      allBlocks = allBlocks.concat(bData.results||[]);
+      if(!bData.has_more || !bData.next_cursor) break;
+      cursor = bData.next_cursor;
+    }
 
     // Convert blocks to markdown text
-    var text = (bData.results||[]).map(function(block) {
+    var getRich = function(arr) { return (arr||[]).map(function(r){return r.plain_text||'';}).join(''); };
+    var text = allBlocks.map(function(block) {
       var type = block.type;
-      var getRich = function(arr) { return (arr||[]).map(function(r){return r.plain_text||'';}).join(''); };
       if(type==='heading_1') return '# '+getRich(block.heading_1&&block.heading_1.rich_text);
       if(type==='heading_2') return '## '+getRich(block.heading_2&&block.heading_2.rich_text);
       if(type==='heading_3') return '### '+getRich(block.heading_3&&block.heading_3.rich_text);
@@ -1769,13 +1779,15 @@ async function loadFromNotion() {
       var getSel=function(p){ return p&&p.select?p.select.name:''; };
       var getDate=function(p){ return p&&p.date&&p.date.start?p.date.start:''; };
       var getTitle=function(p){ return p&&p.title&&p.title[0]?p.title[0].plain_text:''; };
-      var getCb=function(p){ return p&&p.checkbox; };
+      var getCb=function(p){ return !!(p&&(p.checkbox===true)); };
 
-      var ticker=getId(props['Ticker'])||'';
-      var fecha=getDate(props['Fecha'])||'';
+      // Helper to get prop by any of multiple possible key names
+      var getProp=function(keys){ for(var k=0;k<keys.length;k++){ if(props[keys[k]]!=null) return props[keys[k]]; } return null; };
+
+      var ticker=getId(getProp(['Ticker']))||'';
+      var fecha=getDate(getProp(['Fecha']))||'';
       if(!ticker||!fecha) return;
 
-      // Check if already in localStorage (by notionPageId)
       var exists=all.some(function(e){ return e.notionPageId===page.id; });
       if(exists) return;
 
@@ -1783,20 +1795,21 @@ async function loadFromNotion() {
         id:'notion-'+page.id,
         notionPageId:page.id,
         ticker:ticker, fecha:fecha,
-        tipoOperacion:getSel(props['Tipo Operaci\u00F3n']),
-        spot:getNum(props['Spot']),
-        strike:getNum(props['Strike']),
-        dte:getNum(props['DTE']),
-        prima:getNum(props['Prima']),
-        delta:getNum(props['Delta']),
-        iv:getNum(props['IV']),
-        contratos:getNum(props['Contratos']),
-        puntuacion:getNum(props['Puntuaci\u00F3n']),
-        veredicto:getSel(props['Veredicto']),
-        arorc:getNum(props['ARORC']),
-        tesis:getId(props['Tesis']),
-        tieneInforme:getCb(props['Tiene Informe'])||false,
-        notionSynced:true
+        tipoOperacion:getSel(getProp(['Tipo Operaci\u00F3n','Tipo Operacion','Tipo Operaci\u00f3n'])),
+        spot:getNum(getProp(['Spot'])),
+        strike:getNum(getProp(['Strike'])),
+        dte:getNum(getProp(['DTE'])),
+        prima:getNum(getProp(['Prima'])),
+        delta:getNum(getProp(['Delta'])),
+        iv:getNum(getProp(['IV'])),
+        contratos:getNum(getProp(['Contratos'])),
+        puntuacion:getNum(getProp(['Puntuaci\u00F3n','Puntuacion','Puntuaci\u00f3n'])),
+        veredicto:getSel(getProp(['Veredicto'])),
+        arorc:getNum(getProp(['ARORC'])),
+        tesis:getId(getProp(['Tesis'])),
+        tieneInforme:getCb(getProp(['Tiene Informe'])),
+        notionSynced:true,
+        notionReportId:null
       };
       all.push(entry);
       added++;
